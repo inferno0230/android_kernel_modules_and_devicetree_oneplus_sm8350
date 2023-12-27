@@ -133,6 +133,14 @@ void def_zone_systrace_c(unsigned int zone)
 	}
 }
 
+void fbg_state_systrace_c(unsigned int cpu, int fbg_state)
+{
+	char buf[256];
+
+	snprintf(buf, sizeof(buf), "C|10000|Cpu%d_fbg_state|%d\n", cpu, fbg_state);
+	tracing_mark_write(buf);
+}
+
 void cpu_util_systrace_c(unsigned long util, unsigned int cpu, char *msg)
 {
 	char buf[256];

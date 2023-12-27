@@ -55,6 +55,7 @@ static DEFINE_MUTEX(g_aw_dsp_lock);
 
 int g_tx_topo_id = AW_TX_DEFAULT_TOPO_ID;
 int g_rx_topo_id = AW_RX_DEFAULT_TOPO_ID;
+int g_rx_topo_id_2 = 0;
 int g_tx_port_id = AW_TX_DEFAULT_PORT_ID;
 int g_rx_port_id = AW_RX_DEFAULT_PORT_ID;
 
@@ -357,10 +358,13 @@ static int aw_check_dsp_ready(uint32_t param_id)
 		else
 			return true;
 	} else {
-		if (ret != g_rx_topo_id)
-			return false;
-		else
+		if ((ret == g_rx_topo_id) || ((g_rx_topo_id_2 != 0) && (ret == g_rx_topo_id_2))) {
 			return true;
+		} else {
+			aw_pr_info("topo_id 0x%x not equal g_rx_topo_id 0x%x or g_rx_topo_id_2 0x%x,", \
+				ret, g_rx_topo_id, g_rx_topo_id_2);
+			return false;
+		}
 	}
 }
 
@@ -1250,9 +1254,16 @@ void aw_device_parse_topo_id_dt(struct aw_device *aw_dev)
 		g_rx_topo_id = AW_RX_DEFAULT_TOPO_ID;
 		aw_dev_info(aw_dev->dev, "read aw-rx-topo-id failed,use default");
 	}
+
+	ret = of_property_read_u32(aw_dev->dev->of_node, "aw-rx-topo-id-2", &g_rx_topo_id_2);
+	if (ret < 0) {
+		g_rx_topo_id_2 = 0;
+		aw_dev_info(aw_dev->dev, "read aw-rx-topo-id_2 failed,use 0");
+	}
+
 	aw_set_topo_id(g_tx_topo_id, g_rx_topo_id);
-	aw_dev_info(aw_dev->dev, "tx-topo-id: 0x%x, rx-topo-id: 0x%x",
-						g_tx_topo_id, g_rx_topo_id);
+	aw_dev_info(aw_dev->dev, "tx-topo-id: 0x%x, rx-topo-id: 0x%x, rx-topo-id-2: 0x%x",
+						g_tx_topo_id, g_rx_topo_id, g_rx_topo_id_2);
 }
 
 void aw_device_parse_port_id_dt(struct aw_device *aw_dev)

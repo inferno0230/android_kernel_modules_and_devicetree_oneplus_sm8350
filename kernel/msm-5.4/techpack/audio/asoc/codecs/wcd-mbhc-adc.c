@@ -504,7 +504,8 @@ static bool wcd_mbhc_adc_check_for_spl_headset(struct wcd_mbhc *mbhc,
 	adc_hph_threshold = wcd_mbhc_adc_get_hph_thres(mbhc);
 
 	if (output_mv > adc_threshold || output_mv < adc_hph_threshold) {
-		spl_hs = false;
+		if (mbhc->force_linein == true)
+			spl_hs = false;
 	} else {
 		spl_hs = true;
 		if (spl_hs_cnt)
@@ -575,9 +576,12 @@ static bool wcd_is_special_headset(struct wcd_mbhc *mbhc)
 		#else /* OPLUS_ARCH_EXTENDS */
 		if ((output_mv >= 0) && (output_mv <= adc_threshold)) {
 		#endif /* OPLUS_ARCH_EXTENDS */
-			pr_debug("%s: Special headset detected in %d msecs\n",
-					__func__, delay);
-			is_spl_hs = true;
+			if (mbhc->force_linein != true) {
+				pr_debug(
+				"%s: Special headset detected in %d msecs\n",
+					 __func__, delay);
+				is_spl_hs = true;
+			}
 		}
 
 		if (delay == SPECIAL_HS_DETECT_TIME_MS) {
@@ -677,13 +681,18 @@ static void wcd_mbhc_adc_detect_plug_type(struct wcd_mbhc *mbhc)
 	pr_debug("%s: enter\n", __func__);
 	WCD_MBHC_RSC_ASSERT_LOCKED(mbhc);
 
+	#ifndef OPLUS_ARCH_EXTENDS
 	if (mbhc->mbhc_cb->hph_pull_down_ctrl)
+	#else
+	if ((mbhc->mbhc_cb->hph_pull_down_ctrl) && (mbhc->need_cross_conn))
+	#endif /* OPLUS_ARCH_EXTENDS */
 		mbhc->mbhc_cb->hph_pull_down_ctrl(component, false);
 
 	WCD_MBHC_REG_UPDATE_BITS(WCD_MBHC_DETECTION_DONE, 0);
 	#ifdef OPLUS_ARCH_EXTENDS
 	/* change micbias to 1v first */
 	if (mbhc->need_cross_conn) {
+		pr_debug("%s: change micbias to 1v\n", __func__);
 		WCD_MBHC_REG_UPDATE_BITS(WCD_MBHC_MICB2_VOUT, 0x00);
 	}
 	#endif /* OPLUS_ARCH_EXTENDS */
@@ -761,7 +770,11 @@ static void wcd_mbhc_detect_plug_type_new(struct work_struct *work)
 	WCD_MBHC_RSC_LOCK(mbhc);
 	WCD_MBHC_RSC_ASSERT_LOCKED(mbhc);
 
+	#ifndef OPLUS_ARCH_EXTENDS
 	if (mbhc->mbhc_cb->hph_pull_down_ctrl)
+	#else
+	if ((mbhc->mbhc_cb->hph_pull_down_ctrl) && (mbhc->need_cross_conn))
+	#endif /* OPLUS_ARCH_EXTENDS */
 		mbhc->mbhc_cb->hph_pull_down_ctrl(component, false);
 
 	WCD_MBHC_REG_UPDATE_BITS(WCD_MBHC_DETECTION_DONE, 0);
@@ -867,7 +880,9 @@ static void wcd_correct_swch_plug(struct work_struct *work)
 	int ret = 0;
 	int spl_hs_count = 0;
 	int output_mv = 0;
-	int cross_conn;
+	#ifdef OPLUS_ARCH_EXTENDS
+	int cross_conn = 0;
+	#endif /* OPLUS_ARCH_EXTENDS */
 	int try = 0;
 	int hs_threshold, micbias_mv;
 	#ifdef OPLUS_ARCH_EXTENDS
@@ -1097,7 +1112,7 @@ correct_plug_type:
 		retry++;
 		#endif /* OPLUS_FEATURE_MM_FEEDBACK */
 		#ifdef OPLUS_ARCH_EXTENDS
-		if (mbhc->need_cross_conn && swap_type_cnt) {
+		if (mbhc->need_cross_conn && !swap_type_cnt) {
 		#endif /* OPLUS_ARCH_EXTENDS */
 		if ((output_mv <= hs_threshold) &&
 		    (!is_pa_on)) {
@@ -1119,7 +1134,18 @@ correct_plug_type:
 					 */
 					pr_debug("%s: switch did not work\n",
 						 __func__);
+					#ifndef OPLUS_ARCH_EXTENDS
 					plug_type = MBHC_PLUG_TYPE_GND_MIC_SWAP;
+					#else
+					if ((!!ret && !cross_conn) &&
+						(mbhc->mbhc_cfg->enable_usbc_analog) && (!wcd_swch_level_remove(mbhc))) {
+						pr_info("%s: special headphone insert need check mic adc to figure out type\n", __func__);
+						plug_type = wcd_mbhc_get_plug_from_adc(mbhc, output_mv);
+						pr_err("%s: output_mv = %d, plug_type = %d\n", __func__, output_mv, plug_type);
+					} else {
+					    plug_type = MBHC_PLUG_TYPE_GND_MIC_SWAP;
+					}
+					#endif /* OPLUS_ARCH_EXTENDS */
 					goto report;
 				} else {
 					plug_type = MBHC_PLUG_TYPE_GND_MIC_SWAP;
@@ -1156,7 +1182,7 @@ correct_plug_type:
 		} //need_cross_conn
 		#endif /* OPLUS_ARCH_EXTENDS */
 
-		if (output_mv > hs_threshold) {
+		if (output_mv > hs_threshold || mbhc->force_linein == true) {
 			pr_debug("%s: cable is extension cable\n", __func__);
 			plug_type = MBHC_PLUG_TYPE_HIGH_HPH;
 			wrk_complete = true;

@@ -41,7 +41,7 @@
 #endif
 
 #ifdef OPLUS_FEATURE_SMARTPA_PM
-#include "../smartpa_pm/smartpa_pm.h"
+#include "smartpa_pm/smartpa_pm.h"
 #endif /* OPLUS_FEATURE_SMARTPA_PM */
 
 #define AW882XX_DRIVER_VERSION "v1.10.0"

@@ -6,9 +6,9 @@
 #ifndef _FRAME_BOOST_H_
 #define _FRAME_BOOST_H_
 
-#include "frame_ioctl.h"
 #include "frame_info.h"
 #include "frame_group.h"
+#include "cluster_boost.h"
 
 #define ofb_debug(fmt, ...) \
 	pr_info("[frame boost][%s]"fmt, __func__, ##__VA_ARGS__)
@@ -28,6 +28,10 @@ enum STUNE_BOOST_TYPE {
 	BOOST_UTIL_MIN_TIMEOUT,
 	BOOST_SF_MIGR,
 	BOOST_SF_FREQ,
+	BOOST_SF_MIGR_NONGPU,
+	BOOST_SF_FREQ_NONGPU,
+	BOOST_SF_MIGR_GPU,
+	BOOST_SF_FREQ_GPU,
 	BOOST_ED_TASK_MID_DURATION,
 	BOOST_ED_TASK_MID_UTIL,
 	BOOST_ED_TASK_MAX_DURATION,
@@ -45,5 +49,7 @@ extern unsigned int sysctl_frame_boost_debug;
 extern int stune_boost[BOOST_MAX_TYPE];
 extern struct fbg_vendor_hook fbg_hook;
 
+void fbg_set_stune_boost(int value, unsigned int type);
+int fbg_get_stune_boost(unsigned int type);
 void fbg_sysctl_init(void);
 #endif /* _FRAME_BOOST_H_ */

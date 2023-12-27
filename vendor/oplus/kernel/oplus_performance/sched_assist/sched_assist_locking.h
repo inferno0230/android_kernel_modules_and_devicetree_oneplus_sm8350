@@ -8,10 +8,11 @@
 
 struct rq;
 struct task_struct;
+struct cfs_rq;
 struct sched_entity;
 
 void locking_init_rq_data(struct rq *rq);
-void pick_locking_thread(struct rq *rq, struct task_struct **p,
+bool pick_locking_thread(struct rq *rq, struct task_struct **p,
 					struct sched_entity **se);
 void dequeue_locking_thread(struct rq *rq, struct task_struct *p);
 void enqueue_locking_thread(struct rq *rq, struct task_struct *p);

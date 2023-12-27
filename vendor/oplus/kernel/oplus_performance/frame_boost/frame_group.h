@@ -5,6 +5,12 @@
 
 #ifndef _FRAME_GROUP_H
 #define _FRAME_GROUP_H
+#include <linux/cpufreq.h>
+
+#include <linux/version.h>
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 4, 0)
+#include <../kernel/sched/sched.h>
+#endif
 
 #define DEFAULT_FRAME_GROUP_ID (1)
 #define SF_FRAME_GROUP_ID (2)
@@ -83,9 +89,11 @@ bool fbg_rt_task_fits_capacity(struct task_struct *tsk, int cpu);
 
 void fbg_android_rvh_schedule_handler(struct task_struct *prev,
 	struct task_struct *next, struct rq *rq);
+void fbg_android_rvh_cpufreq_transition(struct cpufreq_policy *policy);
 
 void fbg_get_frame_scale(unsigned long *frame_scale);
 void fbg_get_frame_busy(unsigned int *frame_busy);
-
+void fbg_get_prev_util(unsigned long *prev_util);
+void fbg_get_curr_util(unsigned long *curr_util);
 int info_show(struct seq_file *m, void *v);
 #endif /* _FRAME_GROUP_H */

@@ -42,21 +42,22 @@ FRAMEWORK_GIT_VER := $(shell cd $(ANDROID_BUILD_TOP/)frameworks/base && git desc
 SIGMA_GIT_VER := $(shell cd $(LOCAL_PATH) && git describe --dirty=+)
 ifeq ($(SIGMA_GIT_VER),)
 ifeq ($(FRAMEWORK_GIT_VER),)
-SIGMA_VER = android-$(PLATFORM_VERSION)-$(TARGET_PRODUCT)-$(BUILD_ID)
+SIGMA_VER := android-$(PLATFORM_VERSION)-$(TARGET_BOARD_PLATFORM)-$(BUILD_ID)
 else
-SIGMA_VER = framework-$(FRAMEWORK_VER)
+SIGMA_VER := framework-$(FRAMEWORK_VER)
 endif
 else
 ifeq ($(FRAMEWORK_GIT_VER),)
-SIGMA_VER = android-$(PLATFORM_VERSION)-$(TARGET_PRODUCT)-$(BUILD_ID)-sigma-$(SIGMA_GIT_VER)
+SIGMA_VER := android-$(PLATFORM_VERSION)-$(TARGET_BOARD_PLATFORM)-$(BUILD_ID)-sigma-$(SIGMA_GIT_VER)
 else
-SIGMA_VER = framework-$(FRAMEWORK_GIT_VER)-sigma-$(SIGMA_GIT_VER)
+SIGMA_VER := framework-$(FRAMEWORK_GIT_VER)-sigma-$(SIGMA_GIT_VER)
 endif
 endif
 CFLAGS += -DSIGMA_DUT_VER=\"$(SIGMA_VER)\"
 
 include $(CLEAR_VARS)
 LOCAL_MODULE := sigma_dut
+QCOM_WLAN_ROOT ?= hardware/qcom/wlan
 ifeq ($(PRODUCT_VENDOR_MOVE_ENABLED), true)
 LOCAL_VENDOR_MODULE := true
 endif
@@ -65,7 +66,7 @@ LOCAL_MODULE_TAGS := optional
 LOCAL_C_INCLUDES += \
 	$(LOCAL_PATH) frameworks/base/cmds/keystore system/security/keystore \
 	$(LOCAL_PATH) frameworks/opt/net/wifi/libwifi_hal/include/ \
-	$(LOCAL_PATH) hardware/qcom/wlan/qcwcn/wifi_hal \
+	$(LOCAL_PATH) $(QCOM_WLAN_ROOT)/qcwcn/wifi_hal \
 	$(LOCAL_PATH) system/core/include/cutils \
 	$(LOCAL_PATH) hardware/libhardware_legacy/include/hardware_legacy \
 	$(LOCAL_PATH) external/libpcap \
@@ -73,7 +74,10 @@ LOCAL_C_INCLUDES += \
 	$(LOCAL_PATH) external/libnl/include
 
 LOCAL_SHARED_LIBRARIES := libc libcutils libnl
+
+ifneq ($(BUILD_QEMU_IMAGES),true)
 LOCAL_STATIC_LIBRARIES := libpcap.vendor
+endif
 LOCAL_SHARED_LIBRARIES += libnetutils
 LOCAL_C_INCLUDES += $(LOCAL_PATH) system/core/include/netutils
 LOCAL_SHARED_LIBRARIES += libhardware_legacy

@@ -1411,7 +1411,6 @@ qdf_nbuf_t dp_rx_mon_restitch_mpdu(struct dp_soc *soc, uint32_t mac_id,
 }
 #endif
 
-
 /*
  * dp_rx_mon_deliver(): function to deliver packets to stack
  * @soc: DP soc

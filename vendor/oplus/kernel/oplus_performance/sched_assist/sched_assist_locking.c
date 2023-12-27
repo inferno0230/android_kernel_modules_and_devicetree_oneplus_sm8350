@@ -17,13 +17,6 @@
 
 static bool locking_protect_disable = false;
 
-static int locking_max_over_thresh = 2000;
-#define S2NS_T 1000000
-static int locking_entity_over(struct sched_entity *a, struct sched_entity *b)
-{
-	return (s64)(a->vruntime - b->vruntime) > (s64)locking_max_over_thresh * S2NS_T;
-}
-
 void sched_locking_target_comm(struct task_struct *p)
 {
 	/* vts kernel_net_test close locking_protect */
@@ -216,14 +209,13 @@ void dequeue_locking_thread(struct rq *rq, struct task_struct *p)
 	}
 }
 
-void pick_locking_thread(struct rq *rq, struct task_struct **p, struct sched_entity **se)
+bool pick_locking_thread(struct rq *rq, struct task_struct **p, struct sched_entity **se)
 {
-	struct task_struct *ori_p = *p;
 	struct task_struct *key_task;
 	struct sched_entity *key_se;
 
-	if (!rq || !ori_p || !se || test_task_ux(*p) || unlikely(locking_protect_disable))
-		return;
+	if (test_task_ux(*p) || unlikely(locking_protect_disable))
+		return false;
 
 pick_again:
 	if (!list_empty(&rq->locking_thread_list)) {
@@ -231,17 +223,13 @@ pick_again:
 					struct task_struct, locking_entry);
 
 		if (key_task) {
-			/* in case that ux thread keep running too long */
-			if (locking_entity_over(&key_task->se, &ori_p->se))
-				return;
-
 			if (task_inlock_with_depth_check(key_task)) {
 				key_se = &key_task->se;
 				if (key_se) {
 					*p = key_task;
 					*se = key_se;
 					trace_select_locking_thread(key_task, key_task->locking_depth, rq->rq_locking_task);
-					return;
+					return true;
 				}
 			} else {
 				list_del_init(&key_task->locking_entry);
@@ -251,6 +239,8 @@ pick_again:
 			goto pick_again;
 		}
 	}
+
+	return false;
 }
 
 void enqueue_locking_entity(struct cfs_rq *cfs_rq, struct sched_entity *se)
@@ -275,10 +265,9 @@ void check_locking_protect_tick(struct sched_entity *curr)
 {
 	if (entity_is_task(curr)) {
 		struct task_struct *curr_tsk = container_of(curr, struct task_struct, se);
-		if (curr_tsk && task_inlock(curr_tsk)) {
-			if (locking_protect_outtime(curr_tsk))
-				clear_locking_info(curr_tsk);
-		}
+
+		if (curr_tsk && task_inlock(curr_tsk) && locking_protect_outtime(curr_tsk))
+			clear_locking_info(curr_tsk);
 	}
 }
 EXPORT_SYMBOL_GPL(check_locking_protect_tick);

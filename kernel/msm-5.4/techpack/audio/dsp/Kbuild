@@ -29,6 +29,11 @@ ifeq ($(CONFIG_SND_SOC_AUTO), y)
 		export
 		INCS    +=  -include $(AUDIO_ROOT)/config/gvmautoconf.h
 	endif
+	ifdef CONFIG_SND_SOC_AR
+		include $(AUDIO_ROOT)/config/arauto.conf
+		export
+		INCS    +=  -include $(AUDIO_ROOT)/config/arautoconf.h
+	endif
 	ifdef CONFIG_SND_SOC_GVM_SA8295
 		include $(AUDIO_ROOT)/config/sa8295gvmauto.conf
 		export
@@ -161,6 +166,10 @@ ifdef CONFIG_SND_SOC_MSM_QDSP6V2_VM
 	Q6_OBJS += adsp_err.o
 	Q6_OBJS += msm_audio_ion_vm.o
 	Q6_OBJS += q6_init.o
+endif
+
+ifdef CONFIG_OPLUS_FEATURE_MM_FEEDBACK
+	Q6_OBJS += oplus_lvve_err_fb.o
 endif
 
 ifdef CONFIG_MSM_AVTIMER

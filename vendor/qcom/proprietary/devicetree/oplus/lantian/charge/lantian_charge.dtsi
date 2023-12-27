@@ -241,6 +241,7 @@
 		qcom,modify-soc-smooth;
 		qcom,modify-soc-calibration;
 		qcom,sha1_key_index = <2>;
+		oplus,enable_sleep_mode;
 		battery_params {
 			#include "lantian_blp973_afi.dtsi"
 		};
@@ -324,6 +325,10 @@
 		track,voocphy_type = <3>;
 		track,wired_max_power = <67000>;
 		track,wired_fast_chg_scheme = <2>;
+	};
+	oplus_battery_log: oplus,battery_log {
+		compatible = "oplus,battery_log";
+		oplus,battery_log_support;
 	};
 };
 
@@ -1288,7 +1293,14 @@
 /*endif OPLUS_FEATURE_CHG_BASIC*/
 
 /*#ifdef OPLUS_FEATURE_CHG_BASIC*/
-&oplus_sc8547a {
+&soc {
+ 	oplus_ufcs_protocol: oplus,ufcs_protocol {
+ 		status = "ok";
+ 		compatible = "oplus,ufcs-protocol";
+	};
+};
+
+&oplus_ufcs_protocol {
 //kong
 	oplus,ufcs_support_type = <4>;
 	//oplus,ufcs_support_third = <1>;
@@ -1315,7 +1327,7 @@
 	oplus,ufcs_current_change_timeout = <100>;
 	oplus,ufcs_r_default = <270 45 10 45 20 20 20>;
 	oplus,ufcs_rmos_mohm = <5>;
-	oplus,ufcs_r_limit = <150 100 80 70 30>;
+	oplus,ufcs_r_limit = <150 80 70 50 30>;
 	oplus,ufcs_strategy_batt_high_temp = <400 420 430 390 410 420>;
 	oplus,ufcs_strategy_high_current = <3000 2000 2000 3000 3000 3000>;
 	oplus,ufcs_charge_strategy_soc = <0 20 35 50 75 85 95>;

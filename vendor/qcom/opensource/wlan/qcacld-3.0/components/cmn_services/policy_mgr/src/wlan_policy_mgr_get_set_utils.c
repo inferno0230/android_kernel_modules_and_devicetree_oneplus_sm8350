@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2012-2020 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -4802,19 +4803,6 @@ QDF_STATUS policy_mgr_check_mon_concurrency(struct wlan_objmgr_psoc *psoc)
 
 	if (num_open_session) {
 		policy_mgr_err("cannot add monitor mode, due to SAP concurrency");
-		return QDF_STATUS_E_INVAL;
-	}
-
-	/* Ensure there is only one station interface */
-	if (policy_mgr_mode_specific_num_open_sessions(
-				psoc,
-				QDF_STA_MODE,
-				&num_open_session) != QDF_STATUS_SUCCESS)
-		return QDF_STATUS_E_INVAL;
-
-	if (num_open_session > 1) {
-		policy_mgr_err("cannot add monitor mode, due to %u sta interfaces",
-			       num_open_session);
 		return QDF_STATUS_E_INVAL;
 	}
 

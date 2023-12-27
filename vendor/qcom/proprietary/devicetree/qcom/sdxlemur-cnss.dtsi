@@ -16,7 +16,7 @@
 &soc {
 	wlan: qcom,cnss-qca6490@b0000000 {
 		compatible = "qcom,cnss-qca6490";
-		reg = <0xb0000000 0x10000>,
+		reg = <0xc0000000 0x10000>,
 		      <0xb2e5510 0x690>;
 		reg-names = "smmu_iova_ipa", "tcs_cmd";
 		wlan-en-gpio = <&tlmm 91 0>;
@@ -30,6 +30,7 @@
 
 		use-pm-domain;
 		cnss-enable-self-recovery;
+		default_gen_speed = <0>;
 
 		vdd-wlan-aon-supply = <&S7B>;
 		qcom,vdd-wlan-aon-config = <1012000 1012000 0 0 0>;
@@ -169,12 +170,7 @@
 			};
 
 			mhi_event@2 {
-				mhi,num-elements = <32>;
-				mhi,intmod = <0>;
-				mhi,msi = <0>;
-				mhi,priority = <2>;
-				mhi,brstmode = <2>;
-				mhi,data-type = <3>;
+				status = "disabled";
 			};
 		};
 
@@ -201,7 +197,7 @@
 		#size-cells = <1>;
 
 		cnss_pci_iommu_group: cnss_pci_iommu_group {
-			qcom,iommu-dma-addr-pool = <0xa0000000 0x10000000>;
+			qcom,iommu-dma-addr-pool = <0xa0000000 0x20000000>;
 			qcom,iommu-dma = "fastmap";
 			qcom,iommu-faults = "stall-disable", "HUPCF", "no-CFRE",
 					    "non-fatal";

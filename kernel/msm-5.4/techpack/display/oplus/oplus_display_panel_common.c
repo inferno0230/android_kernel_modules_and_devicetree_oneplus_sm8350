@@ -33,6 +33,8 @@ extern int dsi_display_read_panel_reg(struct dsi_display *display, u8 cmd,
 				      void *data, size_t len);
 extern int oplus_display_audio_ready;
 char oplus_rx_reg[PANEL_TX_MAX_BUF] = {0x0};
+char serial_number_cache[30] = {0};
+bool read_serial_num_done = false;
 char oplus_rx_len = 0;
 extern int lcd_closebl_flag;
 extern int spr_mode;
@@ -266,6 +268,79 @@ int oplus_display_panel_get_vendor(void *buf)
 	return 0;
 }
 
+int oplus_display_panel_get_panel_name(void *buf)
+{
+	struct panel_name *p_name = buf;
+	struct dsi_display *display = NULL;
+	char *name = NULL;
+	int panel_id = p_name->name[0];
+
+	display = get_main_display();
+	if (1 == panel_id)
+		display = get_sec_display();
+
+	if (!display || !display->panel ||
+			!display->panel->name) {
+		pr_err("failed to config lcd panel name\n");
+		return -EINVAL;
+	}
+
+#if defined(CONFIG_PXLW_IRIS)
+	if (iris_is_chip_supported() && (!strcmp(display->panel->type, "secondary"))) {
+		pr_info("iris secondary panel no need config\n");
+		return 0;
+	}
+#endif
+
+	name = (char *)display->panel->name;
+
+	memcpy(p_name->name, name,
+			strlen(name) >= (PANEL_NAME_LENS - 1) ? (PANEL_NAME_LENS - 1) : (strlen(name) + 1));
+
+	return 0;
+}
+
+int oplus_display_panel_get_panel_bpp(void *buf)
+{
+	uint32_t *panel_bpp = buf;
+	int bpp = 0;
+	int rc = 0;
+	int panel_id = (*panel_bpp >> PANEL_ID_BIT);
+	struct dsi_display *display = get_main_display();
+	struct dsi_parser_utils *utils = NULL;
+
+	if (panel_id == 1)
+		display = get_sec_display();
+
+	if (!display || !display->panel) {
+		pr_err("display or panel is null\n");
+		return -EINVAL;
+	}
+
+#if defined(CONFIG_PXLW_IRIS)
+	if (iris_is_chip_supported() && (!strcmp(display->panel->type, "secondary"))) {
+		pr_info("iris secondary panel no need config\n");
+		return 0;
+	}
+#endif
+
+	utils = &display->panel->utils;
+	if (!utils) {
+		pr_err("utils is null\n");
+		return -EINVAL;
+	}
+
+	rc = utils->read_u32(utils->data, "qcom,mdss-dsi-bpp", &bpp);
+	if (rc) {
+		pr_info("failed to read qcom,mdss-dsi-bpp, rc=%d\n", rc);
+		return -EINVAL;
+	}
+
+	*panel_bpp = bpp / RGB_COLOR_WEIGHT;
+
+	return 0;
+}
+
 int oplus_display_panel_get_ccd_check(void *buf)
 {
 	struct dsi_display *display = get_main_display();
@@ -461,15 +536,6 @@ int oplus_display_panel_get_serial_number(void *buf) {
 		}
 	}
 
-	if (get_oplus_display_power_status() != OPLUS_DISPLAY_POWER_ON) {
-		printk(KERN_ERR"%s display panel in off status\n", __func__);
-		return ret;
-	}
-
-	if (!display->panel->panel_initialized) {
-		printk(KERN_ERR"%s  panel initialized = false\n", __func__);
-		return ret;
-	}
 	/*
 	* To fix bug id 5552142, we do not read serial number frequently.
 	* First read, then return the saved value.
@@ -478,14 +544,14 @@ int oplus_display_panel_get_serial_number(void *buf) {
 		if (serial_number1 != 0) {
 			ret = scnprintf(panel_rnum->serial_number, PAGE_SIZE, "Get panel serial number: %llx\n",
 							serial_number1);
-			pr_info("%s read serial_number1 0x%x\n", __func__, serial_number1);
+			pr_info("%s read serial_number1 0x%llx\n", __func__, serial_number1);
 			return ret;
 		}
 	} else {
 		if (serial_number0 != 0) {
 			ret = scnprintf(panel_rnum->serial_number, PAGE_SIZE, "Get panel serial number: %llx\n",
 							serial_number0);
-			pr_info("%s read serial_number0 0x%x\n", __func__, serial_number0);
+			pr_info("%s read serial_number0 0x%llx\n", __func__, serial_number0);
 			return ret;
 		}
 	}
@@ -495,6 +561,16 @@ int oplus_display_panel_get_serial_number(void *buf) {
 	 * retry when found panel_serial_info is abnormal.
 	 */
 	for (i = 0;i < 5; i++) {
+		if (get_oplus_display_power_status() != OPLUS_DISPLAY_POWER_ON) {
+			printk(KERN_ERR"%s display panel in off status\n", __func__);
+			return ret;
+		}
+
+		if (!display->panel->panel_initialized) {
+			printk(KERN_ERR"%s  panel initialized = false\n", __func__);
+			return ret;
+		}
+
 		if(!strcmp(display->panel->oplus_priv.vendor_name, "S6E3XA1")
 			|| !strcmp(display->panel->name, "samsung AMS643YE01 dsc cmd mode panel")
 			|| !strcmp(display->panel->name, "samsung ams662zs01 dvt dsc cmd mode panel")) {
@@ -553,18 +629,57 @@ int oplus_display_panel_get_serial_number(void *buf) {
 				mutex_unlock(&display->display_lock);
 
 				ret = dsi_display_read_panel_reg(display, 0xD7, read, 8);
+			} else if (!strcmp(display->panel->oplus_priv.vendor_name, "A0004")) {
+				char panel_date_page[] = { 0x08, 0x38, 0x1D };
+
+				mutex_lock(&display->display_lock);
+				mutex_lock(&display->panel->panel_lock);
+
+				if (display->config.panel_mode == DSI_OP_CMD_MODE) {
+					dsi_display_clk_ctrl(display->dsi_clk_handle, DSI_ALL_CLKS, DSI_CLK_ON);
+				}
+
+				ret = mipi_dsi_dcs_write(&display->panel->mipi_device, 0xFF, panel_date_page, sizeof(panel_date_page));
+				if (display->config.panel_mode == DSI_OP_CMD_MODE) {
+					dsi_display_clk_ctrl(display->dsi_clk_handle, DSI_ALL_CLKS, DSI_CLK_OFF);
+				}
+
+				mutex_unlock(&display->panel->panel_lock);
+				mutex_unlock(&display->display_lock);
+
+				ret = dsi_display_read_panel_reg(display, 0x81, read, 7);
+
+				panel_date_page[2] = 0x00;
+				mutex_lock(&display->display_lock);
+				mutex_lock(&display->panel->panel_lock);
+				if (display->config.panel_mode == DSI_OP_CMD_MODE) {
+					dsi_display_clk_ctrl(display->dsi_clk_handle, DSI_ALL_CLKS, DSI_CLK_ON);
+				}
+
+				mipi_dsi_dcs_write(&display->panel->mipi_device, 0xFF, panel_date_page, sizeof(panel_date_page));
+				if (display->config.panel_mode == DSI_OP_CMD_MODE) {
+					dsi_display_clk_ctrl(display->dsi_clk_handle, DSI_ALL_CLKS, DSI_CLK_OFF);
+				}
+
+				mutex_unlock(&display->panel->panel_lock);
+				mutex_unlock(&display->display_lock);
 			} else {
 				if (display->panel->oplus_ser.is_switch_page) {
 					len = sizeof(display->panel->oplus_ser.serial_number_multi_regs) - 1;
 					for (read_index = 0; read_index < len; read_index++) {
-						ret = dsi_display_read_panel_reg_switch_page(display, display->panel->oplus_ser.serial_number_multi_regs[read_index],
-							ret_val, 1);
-						read[read_index] = ret_val[0];
-						if (ret < 0) {
-							ret = scnprintf(buf, PAGE_SIZE,
-								"Get panel serial number failed, reason:%d", ret);
-							msleep(20);
-							break;
+						if(read_serial_num_done) {
+							read[read_index] = serial_number_cache[read_index];
+						} else {
+							ret = dsi_display_read_panel_reg_switch_page(display, display->panel->oplus_ser.serial_number_multi_regs[read_index],
+								ret_val, 1);
+							read[read_index] = ret_val[0];
+							serial_number_cache[read_index] = ret_val[0];
+							if (ret < 0) {
+								ret = scnprintf(buf, PAGE_SIZE,
+									"Get panel serial number failed, reason:%d", ret);
+								msleep(20);
+								break;
+							}
 						}
 					}
 				} else
@@ -577,6 +692,7 @@ int oplus_display_panel_get_serial_number(void *buf) {
 			msleep(20);
 			continue;
 		}
+		read_serial_num_done = true;
 
 		/*  0xA1			   11th		12th	13th	14th	15th
 		 *  HEX				0x32		0x0C	0x0B	0x29	0x37
@@ -596,6 +712,8 @@ int oplus_display_panel_get_serial_number(void *buf) {
 			panel_serial_info.reg_index = 4;
 		} else if (!strcmp(display->panel->oplus_priv.vendor_name, "NT37701")
 			|| !strcmp(display->panel->oplus_priv.vendor_name, "NT37705")) {
+			panel_serial_info.reg_index = 0;
+		} else if (!strcmp(display->panel->oplus_priv.vendor_name, "A0004")) {
 			panel_serial_info.reg_index = 0;
 		} else if (!strcmp(display->panel->oplus_priv.vendor_name, "S6E3XA1")) {
 			panel_serial_info.reg_index = 15;
@@ -631,6 +749,8 @@ int oplus_display_panel_get_serial_number(void *buf) {
 				if (strcmp(display->panel->name, "20085 boe nt37701 amoled fhd+ panel")) {
 					panel_serial_info.year += 1;
 				}
+			} else if (!strcmp(display->panel->name, "AA254 p 3 A0004 dsc cmd mode panel")) {
+				panel_serial_info.year += 11;
 			}
 			panel_serial_info.month		= read[panel_serial_info.reg_index]	& 0x0F;
 			panel_serial_info.day		= read[panel_serial_info.reg_index + 1]	& 0x1F;

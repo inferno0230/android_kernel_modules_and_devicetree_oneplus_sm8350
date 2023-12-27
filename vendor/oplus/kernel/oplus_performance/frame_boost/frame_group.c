@@ -7,6 +7,7 @@
 #include <linux/seq_file.h>
 #include <linux/sched/cpufreq.h>
 #include <linux/syscore_ops.h>
+#include <linux/version.h>
 #include <../drivers/android/binder_internal.h>
 #include <../kernel/sched/sched.h>
 #include <linux/reciprocal_div.h>
@@ -14,8 +15,14 @@
 #include <trace/events/sched.h>
 #include <trace/events/task.h>
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0))
 #if defined(OPLUS_FEATURE_SCHED_ASSIST) && defined(CONFIG_OPLUS_FEATURE_SCHED_ASSIST)
 #include <linux/sched_assist/sched_assist_common.h>
+#endif
+#else
+#ifdef OPLUS_FEATURE_SCHED_ASSIST
+#include <linux/sched_assist/sched_assist_common.h>
+#endif
 #endif
 extern int sysctl_slide_boost_enabled;
 extern int sysctl_input_boost_enabled;
@@ -24,6 +31,9 @@ extern int sysctl_input_boost_enabled;
 #include "cluster_boost.h"
 #include "frame_debug.h"
 
+#ifdef CONFIG_OPLUS_FEATURE_VT_CAP
+#include <linux/sched_assist/eas_opt/oplus_cap.h>
+#endif
 
 #define NONE_FRAME_TASK      (0)
 #define STATIC_FRAME_TASK    (1 << 0)
@@ -154,8 +164,13 @@ static void insert_cluster(struct oplus_sched_cluster *cluster, struct list_head
 	struct list_head *iter = head;
 
 	list_for_each_entry(tmp, head, list) {
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0))
 		if (arch_scale_cpu_capacity(cpumask_first(&cluster->cpus))
 			< arch_scale_cpu_capacity(cpumask_first(&tmp->cpus)))
+#else
+                if (arch_scale_cpu_capacity(NULL, cpumask_first(&cluster->cpus))
+                        < arch_scale_cpu_capacity(NULL, cpumask_first(&tmp->cpus)))
+#endif
 			break;
 		iter = &tmp->list;
 	}
@@ -194,12 +209,20 @@ static inline void add_cluster(const struct cpumask *cpus, struct list_head *hea
 	unsigned long capacity = 0, insert_capacity = 0;
 	struct oplus_sched_cluster *cluster = NULL;
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0))
 	capacity = arch_scale_cpu_capacity(cpumask_first(cpus));
+#else
+        capacity = arch_scale_cpu_capacity(NULL, cpumask_first(cpus));
+#endif
 	/* If arch_capacity is no different between mid cluster and max cluster,
 	 * just combind them
 	 */
 	list_for_each_entry_rcu(cluster, head, list) {
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0))
 		insert_capacity = arch_scale_cpu_capacity(cpumask_first(&cluster->cpus));
+#else
+                insert_capacity = arch_scale_cpu_capacity(NULL, cpumask_first(&cluster->cpus));
+#endif
 		if (capacity == insert_capacity) {
 			ofb_debug("insert cluster=%*pbl is same as exist cluster=%*pbl\n",
 				cpumask_pr_args(cpus), cpumask_pr_args(&cluster->cpus));
@@ -468,6 +491,7 @@ void set_ui_thread(int pid, int tid)
 
 	raw_spin_unlock_irqrestore(&def_fbg_lock, flags);
 }
+EXPORT_SYMBOL_GPL(set_ui_thread);
 
 void set_render_thread(int pid, int tid)
 {
@@ -498,11 +522,13 @@ void set_render_thread(int pid, int tid)
 
 	raw_spin_unlock_irqrestore(&def_fbg_lock, flags);
 }
+EXPORT_SYMBOL_GPL(set_render_thread);
 
 int get_frame_group_ui(void)
 {
 	return default_frame_boost_group.ui_pid;
 }
+EXPORT_SYMBOL_GPL(get_frame_group_ui);
 
 void set_sf_thread(int pid, int tid)
 {
@@ -533,6 +559,7 @@ void set_sf_thread(int pid, int tid)
 
 	raw_spin_unlock_irqrestore(&sf_fbg_lock, flags);
 }
+EXPORT_SYMBOL_GPL(set_sf_thread);
 
 void set_renderengine_thread(int pid, int tid)
 {
@@ -563,6 +590,7 @@ void set_renderengine_thread(int pid, int tid)
 
 	raw_spin_unlock_irqrestore(&sf_fbg_lock, flags);
 }
+EXPORT_SYMBOL_GPL(set_renderengine_thread);
 
 bool add_rm_related_frame_task(int pid, int tid, int add, int r_depth, int r_width)
 {
@@ -596,7 +624,7 @@ bool add_rm_related_frame_task(int pid, int tid, int add, int r_depth, int r_wid
 out:
 	return success;
 }
-
+EXPORT_SYMBOL_GPL(add_rm_related_frame_task);
 bool add_task_to_game_frame_group(int tid, int add)
 {
 	unsigned long flags;
@@ -626,6 +654,7 @@ bool add_task_to_game_frame_group(int tid, int add)
 out:
 	return success;
 }
+EXPORT_SYMBOL_GPL(add_task_to_game_frame_group);
 
 /**********************************************************
  * add/remove dynamic binder frame task to/from frame group
@@ -815,6 +844,7 @@ void set_frame_group_window_size(unsigned int window_size)
 	grp->window_size = window_size;
 	raw_spin_unlock_irqrestore(&game_fbg_lock, flags);
 }
+EXPORT_SYMBOL_GPL(set_frame_group_window_size);
 
 #define DIV64_U64_ROUNDUP(X, Y) div64_u64((X) + (Y - 1), Y)
 static inline u64 scale_exec_time(u64 delta, struct rq *rq)
@@ -835,9 +865,15 @@ static inline u64 scale_exec_time(u64 delta, struct rq *rq)
 		return delta;
 	}
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0))
 	task_exec_scale = DIV64_U64_ROUNDUP(cur_freq *
 				arch_scale_cpu_capacity(cpu),
 				max_freq);
+#else
+        task_exec_scale = DIV64_U64_ROUNDUP(cur_freq *
+                                arch_scale_cpu_capacity(NULL, cpu),
+                                max_freq);
+#endif
 
 	return (delta * task_exec_scale) >> 10;
 }
@@ -943,6 +979,7 @@ int rollover_frame_group_window(int group_id)
 
 	return 0;
 }
+EXPORT_SYMBOL_GPL(rollover_frame_group_window);
 
 /**************************************
  * cpu frequence adjust for frame group
@@ -972,7 +1009,11 @@ static void update_frame_zone(struct frame_group *grp, u64 wallclock)
 }
 
 extern struct reciprocal_value reciprocal_value(u32 d);
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0))
 struct reciprocal_value schedtune_spc_rdiv;
+#else
+static struct reciprocal_value schedtune_spc_rdiv;
+#endif
 static long schedtune_margin(unsigned long util, long boost)
 {
 	long long margin = 0;
@@ -1020,7 +1061,11 @@ static struct oplus_sched_cluster *best_cluster(struct frame_group *grp)
 
 	for_each_sched_fbg_cluster(cluster) {
 		cpu = cpumask_first(&cluster->cpus);
+#ifdef CONFIG_OPLUS_FEATURE_VT_CAP
+		cap = real_cpu_cap[cpu];
+#else
 		cap = capacity_orig_of(cpu);
+#endif
 		/* We sort cluster list by using arch_scale_cpu_capacity() when
 		 * build_clusters(). But here we consider freqlimit case and use
 		 * capacity_orig_of() to find the max cluster
@@ -1045,13 +1090,13 @@ static struct oplus_sched_cluster *best_cluster(struct frame_group *grp)
 	/* We hope to spread frame group task, if preferred_cluster has only
 	 * one core and platform has 3 clusters, try to find available_cluster
 	 */
+
 	if (fbg_num_sched_clusters <= 2) {
 		grp->available_cluster = NULL;
 	} else {
 		if (fb_cluster[fbg_num_sched_clusters-1]->id == best_cluster->id) {
 			/* if best_cluster is cpu7, then available_cluster is cpu4-6 */
 			grp->available_cluster = fb_cluster[fbg_num_sched_clusters-2];
-
 		} else if (fb_cluster[fbg_num_sched_clusters-2]->id == best_cluster->id) {
 			/* if best_cluster is cpu4-6, then available_cluster is cpu7 */
 			grp->available_cluster = fb_cluster[fbg_num_sched_clusters-1];
@@ -1141,12 +1186,35 @@ static unsigned long update_freq_policy_util(struct frame_group *grp, u64 wallcl
 	return frame_uclamp(frame_util);
 }
 
+void fbg_get_prev_util(unsigned long *prev_util)
+{
+	struct frame_group *grp = &default_frame_boost_group;
+
+	if (!grp->frame_zone)
+		return;
+
+	*prev_util = get_frame_putil(grp->prev_window_scale, grp->frame_zone);
+}
+EXPORT_SYMBOL_GPL(fbg_get_prev_util);
+
+void fbg_get_curr_util(unsigned long *curr_util)
+{
+	struct frame_group *grp = &default_frame_boost_group;
+
+	if (!grp->frame_zone)
+		return;
+
+	*curr_util = get_frame_putil(grp->curr_window_scale, grp->frame_zone);
+}
+EXPORT_SYMBOL_GPL(fbg_get_curr_util);
+
 void fbg_get_frame_scale(unsigned long *frame_scale)
 {
 	struct frame_group *grp = &game_frame_boost_group;
 
 	*frame_scale = grp->prev_window_scale;
 }
+EXPORT_SYMBOL_GPL(fbg_get_frame_scale);
 
 void fbg_get_frame_busy(unsigned int *frame_busy)
 {
@@ -1154,6 +1222,7 @@ void fbg_get_frame_busy(unsigned int *frame_busy)
 
 	*frame_busy = grp->window_busy;
 }
+EXPORT_SYMBOL_GPL(fbg_get_frame_busy);
 
 bool check_putil_over_thresh(unsigned long thresh)
 {
@@ -1163,6 +1232,7 @@ bool check_putil_over_thresh(unsigned long thresh)
 	putil = get_frame_putil(grp->curr_window_scale, FRAME_ZONE);
 	return putil >= thresh;
 }
+EXPORT_SYMBOL_GPL(check_putil_over_thresh);
 
 static bool valid_freq_querys(const struct cpumask *query_cpus, struct frame_group *grp)
 {
@@ -1251,6 +1321,8 @@ unlock_fbg:
 	if (unlikely(sysctl_frame_boost_debug)) {
 		cpu_util_systrace_c(boosted_policy_util, first_cpu, "cfs_policy_util");
 		cpu_util_systrace_c(policy_util ? grp->curr_util : 0, first_cpu,  "cfs_curr_util");
+		val_systrace_c(stune_boost[BOOST_DEF_FREQ], "cfs_boost_freq");
+		val_systrace_c(stune_boost[BOOST_DEF_MIGR], "cfs_boost_migr");
 	}
 
 	/* Adjust governor util with sf_composition_group's policy util */
@@ -1273,6 +1345,8 @@ unlock_fbg:
 		cpu_util_systrace_c(boosted_policy_util, first_cpu, "rt_policy_util");
 		cpu_util_systrace_c(policy_util ? grp->curr_util : 0, first_cpu, "rt_curr_util");
 		cpu_util_systrace_c(raw_util, first_cpu, "raw_util");
+		val_systrace_c(stune_boost[BOOST_SF_FREQ], "rt_boost_freq");
+		val_systrace_c(stune_boost[BOOST_SF_MIGR], "rt_boost_migr");
 	}
 
 	return (raw_util != *util);
@@ -1368,6 +1442,7 @@ unlock:
 
 	return ret;
 }
+EXPORT_SYMBOL_GPL(default_group_update_cpufreq);
 
 bool sf_composition_update_cpufreq(struct task_struct *tsk)
 {
@@ -1539,8 +1614,9 @@ static inline void fbg_update_task_util(struct task_struct *tsk, u64 runtime,
 	if (need_freq_update) {
 		if (composition_part)
 			sf_composition_update_cpufreq(tsk);
-		else if (default_part)
+		else if (default_part) {
 			default_group_update_cpufreq();
+		}
 	}
 }
 
@@ -1615,6 +1691,10 @@ void fbg_android_rvh_schedule_handler(struct task_struct *prev,
 	if (unlikely(prev == next))
 		return;
 
+	if (unlikely(sysctl_frame_boost_debug) && next) {
+		fbg_state_systrace_c(cpu_of(rq), next->fbg_state);
+	}
+
 	/* prev task */
 	update_group_nr_running(prev, PUT_PREV_TASK);
 	/* next task */
@@ -1622,9 +1702,36 @@ void fbg_android_rvh_schedule_handler(struct task_struct *prev,
 }
 EXPORT_SYMBOL_GPL(fbg_android_rvh_schedule_handler);
 
+void fbg_android_rvh_cpufreq_transition(struct cpufreq_policy *policy)
+{
+	struct task_struct *curr_task;
+	struct rq *rq;
+	int cpu;
+
+	if (atomic_read(&fbg_initialized) == 0)
+		return;
+
+	for_each_cpu(cpu, policy->cpus) {
+		rq = cpu_rq(cpu);
+
+		rcu_read_lock();
+		curr_task = rcu_dereference(rq->curr);
+		if (curr_task)
+			get_task_struct(curr_task);
+		rcu_read_unlock();
+
+		if (curr_task) {
+			fbg_update_task_util(curr_task, 0, false);
+			put_task_struct(curr_task);
+		}
+	}
+}
+EXPORT_SYMBOL_GPL(fbg_android_rvh_cpufreq_transition);
+
 static void update_util_before_window_rollover(int group_id)
 {
 	struct oplus_sched_cluster *cluster;
+	struct task_struct *curr_task;
 	struct rq *rq;
 	int cpu;
 
@@ -1634,8 +1741,17 @@ static void update_util_before_window_rollover(int group_id)
 	for_each_sched_fbg_cluster(cluster) {
 		for_each_cpu(cpu, &cluster->cpus) {
 			rq = cpu_rq(cpu);
-			if (rq->curr)
-				fbg_update_task_util(rq->curr, 0, false);
+
+			rcu_read_lock();
+			curr_task = rcu_dereference(rq->curr);
+			if (curr_task)
+				get_task_struct(curr_task);
+			rcu_read_unlock();
+
+			if (curr_task) {
+				fbg_update_task_util(curr_task, 0, false);
+				put_task_struct(curr_task);
+			}
 		}
 	}
 }
@@ -1662,13 +1778,75 @@ static bool group_task_fits_cluster_cpus(struct task_struct *tsk,
 
 	return true;
 }
-
-/*
-inline unsigned long capacity_of(int cpu)
+#if IS_ENABLED(CONFIG_OPLUS_FEATURE_VT_CAP)
+#ifdef CONFIG_HAVE_SCHED_AVG_IRQ
+static inline unsigned long real_cpu_util_irq(struct rq *rq)
 {
-	return cpu_rq(cpu)->cpu_capacity;
+	return rq->avg_irq.util_avg;
 }
-*/
+
+	static inline
+unsigned long real_scale_irq_capacity(unsigned long util, unsigned long irq, unsigned long max)
+{
+	util *= (max - irq);
+	util /= max;
+
+	return util;
+}
+#else
+static inline unsigned long real_cpu_util_irq(struct rq *rq)
+{
+	return 0;
+}
+
+	static inline
+unsigned long real_scale_irq_capacity(unsigned long util, unsigned long irq, unsigned long max)
+{
+	return util;
+}
+#endif
+
+static unsigned long real_scale_rt_capacity(int cpu)
+{
+	struct rq *rq = cpu_rq(cpu);
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0))
+	unsigned long max = arch_scale_cpu_capacity(cpu);
+#else
+	unsigned long max = arch_scale_cpu_capacity(NULL, cpu);
+#endif
+	unsigned long used, free;
+	unsigned long irq;
+
+	irq = real_cpu_util_irq(rq);
+
+	if (unlikely(irq >= max))
+		return 1;
+
+	/*
+	 * avg_rt.util_avg and avg_dl.util_avg track binary signals
+	 * (running and not running) with weights 0 and 1024 respectively.
+	 * avg_thermal.load_avg tracks thermal pressure and the weighted
+	 * average uses the actual delta max capacity(load).
+	 */
+	used = READ_ONCE(rq->avg_rt.util_avg);
+	used += READ_ONCE(rq->avg_dl.util_avg);
+
+	if (unlikely(used >= max))
+		return 1;
+
+	free = max - used;
+
+	return real_scale_irq_capacity(free, irq, max);
+}
+
+inline unsigned long op_capacity_of(int cpu)
+{
+	if (eas_opt_enable && !force_apply_ocap_enable)
+		return real_scale_rt_capacity(cpu);
+	else
+		return cpu_rq(cpu)->cpu_capacity;
+}
+#endif
 
 #define lsub_positive(_ptr, _val) do {				\
 	typeof(_ptr) ptr = (_ptr);				\
@@ -1776,7 +1954,11 @@ unsigned long cpu_util_without(int cpu, struct task_struct *p)
 	 * clamp to the maximum CPU capacity to ensure consistency with
 	 * the cpu_util call.
 	 */
+#ifdef CONFIG_OPLUS_FEATURE_VT_CAP
+	return min_t(unsigned long, util, real_cpu_cap[cpu]);
+#else
 	return min_t(unsigned long, util, capacity_orig_of(cpu));
+#endif
 }
 
 static bool task_is_rt(struct task_struct *task)
@@ -1825,14 +2007,25 @@ bool set_frame_group_task_to_perfer_cpu(struct task_struct *p, int *target_cpu)
 		return false;
 
 	/* Note that *target_cpu maybe invalid */
-	if ((*target_cpu > 0) && (*target_cpu < num_possible_cpus())
+	if ((*target_cpu >= 0) && (*target_cpu < num_possible_cpus())
 		&& cpumask_test_cpu(*target_cpu, &cluster->cpus))
 		return false;
 
 retry:
-	cpumask_and(&search_cpus, p->cpus_ptr, cpu_online_mask);
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0))
+	cpumask_and(&search_cpus, p->cpus_ptr, cpu_active_mask);
+#ifdef CONFIG_SCHED_WALT
+	cpumask_andnot(&search_cpus, &search_cpus, cpu_isolated_mask);
+#endif
+#else
+	cpumask_and(&search_cpus, &p->cpus_allowed, cpu_online_mask);
+#endif
 	cpumask_and(&search_cpus, &search_cpus, &cluster->cpus);
 	cpu_nums = cpumask_weight(&search_cpus);
+
+	/* In case preferred_cluster->cpus are inactive, give it a try to walk_next_cls */
+	if (!cpu_nums && cluster == grp->preferred_cluster)
+		walk_next_cls = true;
 
 	for_each_cpu(iter_cpu, &search_cpus) {
 		struct rq *rq = NULL;
@@ -1841,6 +2034,20 @@ retry:
 		rq = cpu_rq(iter_cpu);
 		curr = rq->curr;
 		if (curr) {
+			/* If there are ux and rt threads in running state on this CPU, drop it! */
+			if (curr->ux_state & (SCHED_ASSIST_UX_MASK | POSSIBLE_UX_MASK | SA_TYPE_INHERIT))
+				continue;
+
+			if (curr->prio < MAX_RT_PRIO)
+				continue;
+
+			/* If there are ux and rt threads in runnable state on this CPU, drop it! */
+			if (!list_empty(&rq->ux_thread_list))
+				continue;
+
+			if (rt_rq_is_runnable(&rq->rt))
+				continue;
+
 			/* Avoid puting group task on the same cpu */
 			if (curr->fbg_state) {
 				if ((backup_cpu == -1) && task_is_rt(curr))
@@ -1866,7 +2073,15 @@ retry:
 			goto out;
 		}
 
+		/*
+		 * Select the cpu with the most remaining computing power
+		 * from preferred_cluster and available_cluster.
+		 */
+#if IS_ENABLED(CONFIG_OPLUS_FEATURE_VT_CAP)
+		spare_cap = max_t(long, op_capacity_of(iter_cpu) - cpu_util_without(iter_cpu, p), 0);
+#else
 		spare_cap = max_t(long, capacity_of(iter_cpu) - cpu_util_without(iter_cpu, p), 0);
+#endif
 		if (spare_cap > max_spare_cap) {
 			max_spare_cap = spare_cap;
 			max_spare_cap_cpu = iter_cpu;
@@ -1918,8 +2133,14 @@ bool fbg_need_up_migration(struct task_struct *p, struct rq *rq)
 	cluster = grp->preferred_cluster;
 	raw_spin_unlock_irqrestore(&def_fbg_lock, flags);
 
+#ifdef CONFIG_OPLUS_FEATURE_VT_CAP
+	cpu_capacity = real_cpu_cap[cpu_of(rq)];
+	return group_task_fits_cluster_cpus(p, cluster) &&
+		(cpu_capacity < real_cpu_cap[cpumask_first(&cluster->cpus)]);
+#else
 	return group_task_fits_cluster_cpus(p, cluster) &&
 		(cpu_capacity < capacity_orig_of(cpumask_first(&cluster->cpus)));
+#endif
 }
 EXPORT_SYMBOL_GPL(fbg_need_up_migration);
 
@@ -1953,7 +2174,11 @@ bool fbg_skip_migration(struct task_struct *tsk, int src_cpu, int dst_cpu)
 	if (!group_task_fits_cluster_cpus(tsk, cluster))
 		return false;
 
+#ifdef CONFIG_OPLUS_FEATURE_VT_CAP
+	return real_cpu_cap[dst_cpu] < real_cpu_cap[cpumask_first(&cluster->cpus)];
+#else
 	return capacity_orig_of(dst_cpu) < capacity_orig_of(cpumask_first(&cluster->cpus));
+#endif
 }
 EXPORT_SYMBOL_GPL(fbg_skip_migration);
 
@@ -1984,7 +2209,11 @@ bool fbg_rt_task_fits_capacity(struct task_struct *tsk, int cpu)
 	raw_util = grp->policy_util;
 	grp_util = raw_util + schedtune_grp_margin(raw_util, stune_boost[BOOST_SF_MIGR]);
 
+#ifdef CONFIG_OPLUS_FEATURE_VT_CAP
+	fits = real_cpu_cap[cpu] >= grp_util;
+#else
 	fits = capacity_orig_of(cpu) >= grp_util;
+#endif
 
 	if (unlikely(sysctl_frame_boost_debug))
 		trace_printk("comm=%-12s pid=%d tgid=%d cpu=%d grp_util=%llu raw_util=%lu cpu_cap=%lu fits=%d\n",
@@ -2093,6 +2322,7 @@ int info_show(struct seq_file *m, void *v)
 
 	return 0;
 }
+EXPORT_SYMBOL_GPL(info_show);
 
 int frame_group_init(void)
 {
@@ -2139,10 +2369,17 @@ int frame_group_init(void)
 	}
 
 	for_each_sched_fbg_cluster(cluster)
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0))
 		ofb_debug("num_cluster=%d id=%d cpumask=%*pbl capacity=%lu num_cpus=%d\n",
 			fbg_num_sched_clusters, cluster->id, cpumask_pr_args(&cluster->cpus),
 			arch_scale_cpu_capacity(cpumask_first(&cluster->cpus)),
 			num_possible_cpus());
+#else
+                ofb_debug("num_cluster=%d id=%d cpumask=%*pbl capacity=%lu num_cpus=%d\n",
+                        fbg_num_sched_clusters, cluster->id, cpumask_pr_args(&cluster->cpus),
+                        arch_scale_cpu_capacity(NULL, cpumask_first(&cluster->cpus)),
+                        num_possible_cpus());
+#endif
 
 	register_syscore_ops(&fbg_syscore_ops);
 

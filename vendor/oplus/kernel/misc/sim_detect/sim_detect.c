@@ -22,6 +22,12 @@
 
 
 #define MODEM_DETECT_CMD 55
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 17, 0))
+/*
+ * Replaced PDE_DATA() with pde_data()
+ */
+#define pde_data(inode) PDE_DATA(inode)
+#endif
 
 static struct of_device_id sim_detect_id[] = {
 	{.compatible = "oplus, sim_detect", },
@@ -49,7 +55,7 @@ static ssize_t proc_sim_detect_read(struct file *file,
 	int ret = 0;
 	char page[25] = {0};
 	int sim_detect_value = -1;
-	struct sim_detect_data *sim_detect_data = PDE_DATA(file_inode(file));
+	struct sim_detect_data *sim_detect_data = pde_data(file_inode(file));
 
 	if (!sim_detect_data)
 		return 0;

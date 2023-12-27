@@ -19,5 +19,6 @@ void query_cpus_systrace_c(unsigned int cpu);
 void sf_zone_systrace_c(unsigned int zone);
 void def_zone_systrace_c(unsigned int zone);
 void cpu_util_systrace_c(unsigned long util, unsigned int cpu, char *msg);
+void fbg_state_systrace_c(unsigned int cpu, int fbg_state);
 
 #endif /* _FRAME_DEBUG_H */

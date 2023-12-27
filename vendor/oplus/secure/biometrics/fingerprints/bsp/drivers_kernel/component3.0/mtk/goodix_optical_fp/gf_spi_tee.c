@@ -178,9 +178,13 @@ static int gf_opticalfp_irq_handler(struct fp_underscreen_info *tp_info);
     #if !defined(CONFIG_MTK_CLKMGR)
     struct spi_device *spi = gf_dev->spi;
     struct mtk_spi *gf_ms = spi_master_get_devdata(spi->master);
-    clk_prepare_enable(gf_ms->spi_clk);
-	pr_info("clk_prepare_enable gf_spi_clk_enable.\n");
-
+    int ret = 0;
+    ret = clk_prepare_enable(gf_ms->spi_clk);
+    if (ret) {
+        pr_info("clk_prepare_enable gf_spi_clk_enable Failed ret:%d\n", ret);
+    } else {
+        pr_info("clk_prepare_enable gf_spi_clk_enable.\n");
+    }
     #else
     enable_clock(MT_CG_PERI_SPI0, "spi");
 	pr_debug("enable_clock gf_spi_clk_enable.\n");

@@ -69,10 +69,10 @@
 	};
 };
 
-&pm8008i_chip {
-	/delete-property/ pinctrl-names;
-	/delete-property/ pinctrl-0;
-};
+// &pm8008i_chip {
+// 	/delete-property/ pinctrl-names;
+// 	/delete-property/ pinctrl-0;
+// };
 
 &soc {
 	sde_dp: qcom,dp_display@ae90000 {
@@ -175,10 +175,10 @@
 					1151 1300
 					1301 1599
 					1600 1900>;
-			aboard-patterns = <13>;
+			aboard-patterns = <0 1 2>;
 
 			/*main board*/
-			match-projects = <22236>;
+			match-projects = <22235 22235 22236>;
 
 			/*rf type*/
 			//rf_match_support;
@@ -199,13 +199,6 @@
     midas_pdev {
         compatible = "oplus,midas-pdev";
     };
-
-	//#ifdef OPLUS_FEATURE_TP_BASIC
-		oplus_sim_detect {
-			compatible = "oplus, sim_detect";
-			Hw,sim_det = <&tlmm 116 0>;
-		};
-    //#endif /* OPLUS_FEATURE_TP_BASIC */
 };
 
 &pm7250b_vib {
@@ -553,7 +546,7 @@
         panel_type = <3>;
         // type of tp_dev ,TP-SAMSUNG = 8;
         platform_support_project = <22236>;
-        platform_support_project_dir = <22236>;
+        platform_support_project_dir = <22235>;
         platform_support_project_commandline = "mdss_dsi_oplus22236_boe_nt37705_1080_2412_dsc_cmd";
 
         prevention,curved_screen_V2;
@@ -578,11 +571,16 @@
         prevention,edge_swipe_config = <240 800>;
 
         prevention,curved_screen_V4;
+        prevention,long_eliminate_point_type = <2 8640 6640 210 19296 300 1>;
         prevention,long_fingerhold_condition2 = <560 1600 0 0>;
         prevention,top_corner_config2 =<3 80 420 1200 0>;
         prevention,hor_long_top_corner_config =<240 1600 0 0>;
         prevention,top_middle_config =<8640 800 800 0>;
-        prevention,corner_eliminate_point_type =<0 960 1600 0>;
+        prevention,corner_eliminate_point_type =<0 960 1600 1>;
+        prevention,finger_hold_differ_size = <1 0 360 300>;
+        prevention,finger_hold_max_rx_exit_distance = <5 350 1700>;
+        prevention,max_rx_exit_distance = <1 5 90 350 1400>;
+        prevention,dynamic_finger_hold_exit_distance = <1 290 1700 390>;
 
         /* SW Support Feature Control */
         black_gesture_support;
@@ -605,6 +603,7 @@
         temperature_detect_shellback_support;
         snr_read_support;
         disable_suspend_irq_handler_support;
+        tp_data_record_support;
         /*
          *Virtual Key Config:
          *1:touchpanel,button-type: <virtualkey_type  supportted_button-map>
@@ -674,11 +673,11 @@
         project_id = <22236>;
         vid_len = <2>;
         touchpanel,tp-index = <0>;
-        touchpanel,tp_ic_type = <2>;
+        //touchpanel,tp_ic_type = <2>;
         panel_type = <7>;
         // type of tp_dev ,TP-SAMSUNG = 8;
         platform_support_project = <22236>;
-        platform_support_project_dir = <22236>;
+        platform_support_project_dir = <22235>;
         platform_support_project_commandline = "mdss_dsi_oplus22236_tm_ili7838a_1080_2412_dsc_cmd";
 
         prevention,curved_screen_V2;
@@ -703,11 +702,16 @@
         prevention,edge_swipe_config = <300 1000>;
 
         prevention,curved_screen_V4;
+        prevention,long_eliminate_point_type = <2 10800 8040 220 24120 300 1>;
         prevention,long_fingerhold_condition2 = <700 2000 0 0>;
         prevention,top_corner_config2 =<3 80 420 1500 0>;
         prevention,hor_long_top_corner_config =<300 2000 0 0>;
         prevention,top_middle_config =<10800 1000 1000 0>;
-        prevention,corner_eliminate_point_type =<0 1200 2000 0>;
+        prevention,corner_eliminate_point_type =<0 1200 2000 1>;
+        prevention,finger_hold_differ_size = <1 0 300 300>;
+        prevention,finger_hold_max_rx_exit_distance = <5 300 2000>;
+        prevention,max_rx_exit_distance = <1 5 150 300 2000>;
+        prevention,dynamic_finger_hold_exit_distance = <1 300 2000 450>;
 
         /* SW Support Feature Control */
         black_gesture_support;
@@ -835,5 +839,81 @@
 		oplus,sec_en_anti_reg = <0x7801D4>;
 		oplus,sec_override1_reg = <0x7860C0>;
 		oplus,override1_en_value = <0x1>;
+	};
+};
+
+&tlmm {
+	//#ifdef OPLUS_FEATRUE_ESIM
+	esim_gpio: esim_gpio {
+		mux {
+			pins = "gpio43";
+			function = "gpio";
+		};
+		config {
+			pins = "gpio43";
+			bias-disable; /* NO pull */
+			drive-strength = <2>; /* 2 MA */
+			output-high;
+		};
+	};
+
+	esim_det_gpio: esim_det_gpio {
+		mux {
+			pins = "gpio98";
+			function = "gpio";
+		};
+		config {
+			pins = "gpio98";
+			bias-disable; /* NO pull */
+			drive-strength = <2>; /* 2 MA */
+			output-high;
+		};
+	};
+};
+
+&pm7250b_gpios {
+	sim2_det_no_pull: sim2_det_no_pull {
+			pins = "gpio7";
+			function = "normal";
+			input-enable;
+			power-source = <0>;
+			bias-disable;
+	};
+
+	sim2_det_pull_high: sim2_det_pull_high {
+			pins = "gpio7";
+			function = "normal";
+			input-enable;
+			power-source = <0>;
+			bias-pull-up;
+	};
+
+	sim2_det_pull_low: sim2_det_pull_low {
+			pins = "gpio7";
+			function = "normal";
+			input-enable;
+			power-source = <0>;
+			bias-pull-down;
+	};
+	//#endif /* OPLUS_FEATRUE_ESIM */
+};
+&soc {
+	//#ifdef OPLUS_FEATRUE_ESIM
+	oplus-gpio {
+		compatible = "oplus,oplus-gpio";
+		pinctrl-names = "default", "sim2_det_no_pull", "sim2_det_pull_high", "sim2_det_pull_low";
+		pinctrl-0 = <&esim_gpio &esim_det_gpio &sim2_det_no_pull>;
+		pinctrl-1 = <&sim2_det_no_pull>;
+		pinctrl-2 = <&sim2_det_pull_high>;
+		pinctrl-3 = <&sim2_det_pull_low>;
+		oplus,oplus-gpio-esim = <&tlmm 43 0>;
+		oplus,oplus-esim-det = <&tlmm 98 0>;
+		oplus,oplus-sim2-det = <&pm7250b_gpios 7 0>;
+                oplus,uim-reset-pin = "modem_solution";
+	};
+	//#endif /* OPLUS_FEATRUE_ESIM */
+	oplus_sim_detect {
+		compatible = "oplus, sim_detect";
+		Hw,sim_det = "modem_det";
 	};
 };

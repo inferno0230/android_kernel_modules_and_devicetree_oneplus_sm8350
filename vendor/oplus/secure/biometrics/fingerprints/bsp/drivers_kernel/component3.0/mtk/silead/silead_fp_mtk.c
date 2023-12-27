@@ -322,6 +322,7 @@ static int silfp_parse_dts(struct silfp_data *fp_dev)
 	struct platform_device *pdev = NULL;
 	int  ret;
 //#ifdef VENDOR_EDIT
+//Zemin.Li@BSP.Fingerprint.Basic, 2019.11.29, fix failed to get irq
 	node = of_find_compatible_node(NULL, NULL, FP_PINS_OF);
 
 	if (node) {
@@ -536,21 +537,26 @@ static int silfp_set_spi(struct silfp_data *fp_dev, bool enable)
 		return ret;
 	}
 
-	if (enable && !atomic_read(&fp_dev->spionoff_count)) {
-		atomic_inc(&fp_dev->spionoff_count);
-		mt_spi_enable_master_clk(fp_dev->spi);
-		/*	clk_prepare_enable(ms->clk_main); */
-		//ret = clk_enable(ms->clk_main);
-		ret = 0;
-	} else if (atomic_read(&fp_dev->spionoff_count)) {
-		atomic_dec(&fp_dev->spionoff_count);
-		mt_spi_disable_master_clk(fp_dev->spi);
-		/*	clk_disable_unprepare(ms->clk_main); */
-		//clk_disable(ms->clk_main);
-		ret = 0;
-	}
-
-	LOG_MSG_DEBUG(DBG_LOG, "[%s] done (%d).\n", __func__, ret);
+    if (enable) {
+        if (!atomic_read(&fp_dev->spionoff_count)) {
+            mt_spi_enable_master_clk(fp_dev->spi);
+            /*	clk_prepare_enable(ms->clk_main); */
+            //ret = clk_enable(ms->clk_main);
+        }
+        atomic_inc(&fp_dev->spionoff_count);
+        ret = 0;
+    } else if (atomic_read(&fp_dev->spionoff_count)) {
+        atomic_dec(&fp_dev->spionoff_count);
+        if (!atomic_read(&fp_dev->spionoff_count)) {
+            mt_spi_disable_master_clk(fp_dev->spi);
+            /*	clk_disable_unprepare(ms->clk_main); */
+            //clk_disable(ms->clk_main);
+        }
+        ret = 0;
+    } else {
+        LOG_MSG_DEBUG(ERR_LOG, "unpaired enable/disable %d, [%s]\n",enable,__func__);
+    }
+    LOG_MSG_DEBUG(DBG_LOG, "[%s] done (%d).\n",__func__,ret);
 #endif /* CONFIG_MTK_CLKMGR */
 #endif /* !CONFIG_MT_SPI_FPGA_ENABLE */
 #endif /* !CONFIG_SILEAD_FP_PLATFORM */
@@ -576,10 +582,10 @@ static int silfp_resource_init(struct silfp_data *fp_dev,
 		goto err;
 	}
 
-	//status = silfp_hw_poweron(fp_dev);
-	if (status < 0) {
-		goto err;
-	}
+	// status = silfp_hw_poweron(fp_dev);
+	// if (status < 0) {
+	//     goto err;
+	// }
 
 	/*fp_dev->int_port = of_get_named_gpio(fp_dev->spi->dev.of_node, "irq-gpios", 0);
 	fp_dev->rst_port = of_get_named_gpio(fp_dev->spi->dev.of_node, "rst-gpios", 0); */
@@ -632,10 +638,10 @@ static int silfp_resource_init(struct silfp_data *fp_dev,
 	silfp_hw_poweron(fp_dev);
 	mdelay(5);
 
-	/*脡脧碌莽脰庐潞贸脌颅赂脽RST拢卢脢鹿脛脺脛拢脳茅*/
+	/*上电之后拉高RST，使能模组*/
 	pinctrl_select_state(fp_dev->pin.pinctrl, fp_dev->pin.pins_rst_h);
 
-	/*脜盲脰脙spi 碌脛脡脧碌莽潞贸碌脛脛卢脠脧脳麓脤卢拢卢CS脛拢脢陆脌颅赂脽脢盲鲁枚*/
+	/*配置spi 的上电后的默认状态，CS模式拉高输出*/
 	silfp_set_spi_default_status(fp_dev);
 
 	if (!ret) {

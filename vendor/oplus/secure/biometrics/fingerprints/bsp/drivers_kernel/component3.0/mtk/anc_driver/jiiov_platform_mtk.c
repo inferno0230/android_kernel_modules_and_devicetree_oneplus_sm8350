@@ -1154,7 +1154,11 @@ static int anc_probe(anc_device_t *pdev)
     dev_data->notifier = anc_noti_block;
 #if defined(CONFIG_OPLUS_FINGERPRINT_GKI_ENABLE)
 #if defined(CONFIG_DRM_MEDIATEK_V2)
-    mtk_disp_notifier_register("fingerprint", &dev_data->notifier);
+    rc = mtk_disp_notifier_register("fingerprint", &dev_data->notifier);
+    if (rc) {
+        dev_err(dev, "%s: Failed to mtk_disp_notifier_register", __func__);
+        goto exit;
+    }
 #endif
 #else
     rc = fb_register_client(&dev_data->notifier);

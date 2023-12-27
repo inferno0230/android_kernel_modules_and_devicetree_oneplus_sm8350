@@ -48,6 +48,11 @@ qdf_declare_param(qdf_log_flush_timer_period, uint);
 #include "qdf_mc_timer.h"
 #include <host_diag_core_log.h>
 
+#ifdef OPLUS_FEATURE_SOFTAP_DCS_SWITCH
+//Add for softap connect SAE status
+#include <wlan_hdd_hostapd.h>
+#endif /* OPLUS_FEATURE_SOFTAP_DCS_SWITCH */
+
 /* Global qdf print id */
 
 /* Preprocessor definitions and constants */
@@ -114,11 +119,18 @@ static tp_qdf_dp_trace_cb qdf_dp_trace_cb_table[QDF_DP_TRACE_MAX + 1];
  * string contains printf-like replacement parameters, which follow
  * this parameter in the variable argument list.
  *
- * Return: None
+ * Return: num of bytes written to buffer
  */
-void qdf_snprintf(char *str_buffer, unsigned int size, char *str_format, ...)
+int qdf_snprintf(char *str_buffer, unsigned int size, char *str_format, ...)
 {
-	snprintf(str_buffer, size, str_format);
+	va_list args;
+	int i;
+
+	va_start(args, str_format);
+	i = vsnprintf(str_buffer, size, str_format, args);
+	va_end(args);
+
+	return i;
 }
 qdf_export_symbol(qdf_snprintf);
 
@@ -1560,6 +1572,22 @@ void qdf_dp_log_proto_pkt_info(uint8_t *sa, uint8_t *da, uint8_t type,
 	else
 		last_ticks_rx[subtype] = curr_ticks;
 
+#ifdef OPLUS_FEATURE_SOFTAP_DCS_SWITCH
+//Add for softap connect fail monitor
+	switch (subtype) {
+	case QDF_PROTO_EAPOL_M2:
+	case QDF_PROTO_EAPOL_M4:
+	case QDF_PROTO_DHCP_DISCOVER:
+	case QDF_PROTO_DHCP_REQUEST:
+		if (dir == QDF_RX) {
+			hostapd_send_eapol_uevent(type, subtype, status);
+		}
+		break;
+	default:
+		break;
+	}
+#endif /* OPLUS_FEATURE_SOFTAP_DCS_SWITCH */
+
 	if (status == QDF_TX_RX_STATUS_INVALID)
 		qdf_nofl_info("%s %s: SA:" QDF_MAC_ADDR_FMT " DA:" QDF_MAC_ADDR_FMT,
 			      qdf_get_pkt_type_string(type, subtype),
@@ -1574,6 +1602,30 @@ void qdf_dp_log_proto_pkt_info(uint8_t *sa, uint8_t *da, uint8_t type,
 }
 
 qdf_export_symbol(qdf_dp_log_proto_pkt_info);
+
+#ifdef OPLUS_FEATURE_SOFTAP_DCS_SWITCH
+//Add for softap connect EAPOL status
+void hostapd_send_eapol_uevent(uint8_t type, uint8_t subtype, uint8_t status)
+{
+	char event[] = "HOSTAPD_EVENT=sta_connect";
+	char sta_connect_event[30] = {'\0'};
+	char pkt_type[30] = {'\0'};
+	char pkt_statu[30] = {'\0'};
+	char *envp[5];
+
+	snprintf(sta_connect_event, sizeof(sta_connect_event), "STA_CONNECT_EVENT=auth");
+	snprintf(pkt_type, sizeof(pkt_type), "PKTTYPE=%s", qdf_get_pkt_type_string(type, subtype));
+	snprintf(pkt_statu, sizeof(pkt_statu), "PKTSTATU=%s", qdf_get_pkt_status_string(status));
+
+	envp[0] = (char *)&event;
+	envp[1] = (char *)&sta_connect_event;
+	envp[2] = (char *)&pkt_type;
+	envp[3] = (char *)&pkt_statu;
+	envp[4] = NULL;
+
+	hostapdConnSendUevent(envp);
+}
+#endif /* OPLUS_FEATURE_SOFTAP_DCS_SWITCH */
 
 /**
  * qdf_log_icmpv6_pkt() - log ICMPv6 packet

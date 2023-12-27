@@ -49,6 +49,8 @@ int iris_recovery_check_state = -1;
 int dither_enable = 0;
 int backlight_smooth_enable = 1;
 
+extern char serial_number_cache[30];
+extern bool read_serial_num_done;
 extern int oplus_underbrightness_alpha;
 extern int msm_drm_notifier_call_chain(unsigned long val, void *v);
 int oplus_dimlayer_fingerprint_failcount = 0;
@@ -284,6 +286,56 @@ error:
 	return rc;
 }
 
+int dsi_panel_read_panel_reg_nolock(struct dsi_display_ctrl *ctrl,
+			     struct dsi_panel *panel, u8 cmd, void *rbuf,  size_t len)
+{
+	int rc = 0;
+	struct dsi_cmd_desc cmdsreq;
+	u32 flags = 0;
+
+	if (!panel || !ctrl || !ctrl->ctrl) {
+		return -EINVAL;
+	}
+
+	if (!dsi_ctrl_validate_host_state(ctrl->ctrl)) {
+		return 1;
+	}
+
+	if (!dsi_panel_initialized(panel)) {
+		rc = -EINVAL;
+		goto error;
+	}
+
+	memset(&cmdsreq, 0x0, sizeof(cmdsreq));
+	cmdsreq.msg.type = 0x06;
+	cmdsreq.msg.tx_buf = &cmd;
+	cmdsreq.msg.tx_len = 1;
+	cmdsreq.msg.rx_buf = rbuf;
+	cmdsreq.msg.rx_len = len;
+	cmdsreq.msg.flags |= MIPI_DSI_MSG_LASTCOMMAND;
+	#ifdef OPLUS_BUG_STABILITY
+	/*MM.Display.LCD.Params,2022-10-18,lp config*/
+	if (panel->oplus_priv.lp_config_flag) {
+		cmdsreq.msg.flags |= MIPI_DSI_MSG_USE_LPM;
+	}
+	#endif /* OPLUS_BUG_STABILITY */
+	flags |= (DSI_CTRL_CMD_FETCH_MEMORY | DSI_CTRL_CMD_READ |
+		  DSI_CTRL_CMD_CUSTOM_DMA_SCHED |
+		  DSI_CTRL_CMD_LAST_COMMAND);
+
+	rc = dsi_ctrl_cmd_transfer(ctrl->ctrl, &cmdsreq.msg, &flags);
+
+	if (rc <= 0) {
+		pr_err("%s, dsi_display_read_panel_reg rx cmd transfer failed rc=%d\n",
+		       __func__,
+		       rc);
+		goto error;
+	}
+
+error:
+	return rc;
+}
+
 int dsi_display_spr_mode(struct dsi_display *display, int mode)
 {
 	int rc = 0;
@@ -483,6 +535,7 @@ int dsi_display_read_panel_reg_switch_page(struct dsi_display *display, u8 cmd, 
 
 	panel = display->panel;
 	mutex_lock(&display->display_lock);
+	mutex_lock(&panel->panel_lock);
 
 
 	rc = dsi_panel_tx_cmd_set(display->panel, DSI_CMD_PANEL_INFO_SWITCH_PAGE);
@@ -513,7 +566,7 @@ int dsi_display_read_panel_reg_switch_page(struct dsi_display *display, u8 cmd, 
 				     DSI_ALL_CLKS, DSI_CLK_ON);
 	}
 
-	rc = dsi_panel_read_panel_reg(m_ctrl, display->panel, cmd, data, len);
+	rc = dsi_panel_read_panel_reg_nolock(m_ctrl, display->panel, cmd, data, len);
 	if (rc < 0) {
 		pr_err("%s, [%s] failed to read panel register, rc=%d,cmd=%d\n",
 		       __func__,
@@ -536,6 +589,7 @@ int dsi_display_read_panel_reg_switch_page(struct dsi_display *display, u8 cmd, 
 	}
 
 done:
+	mutex_unlock(&panel->panel_lock);
 	mutex_unlock(&display->display_lock);
 	pr_err("%s, return: %d\n", __func__, rc);
 	return rc;
@@ -926,11 +980,6 @@ static ssize_t oplus_display_get_panel_serial_number(struct kobject *obj,
 		cur_panel_id = 1;
 	}
 
-	if (get_oplus_display_power_status() != OPLUS_DISPLAY_POWER_ON) {
-		printk(KERN_ERR"%s display panel in off status\n", __func__);
-		return ret;
-	}
-
 	/*
 	 * To fix bug id 5552142, we do not read serial number frequently.
 	 * First read, then return the saved value.
@@ -939,21 +988,16 @@ static ssize_t oplus_display_get_panel_serial_number(struct kobject *obj,
 		if (serial_number_sec != 0) {
 			ret = scnprintf(buf, PAGE_SIZE, "Get panel1 serial number: %llx\n",
 							serial_number_sec);
-			pr_info("%s read serial_number_sec 0x%x\n", __func__, serial_number_sec);
+			pr_info("%s read serial_number_sec 0x%llx\n", __func__, serial_number_sec);
 			return ret;
 		}
 	} else {
 		if (serial_number_fir != 0) {
 			ret = scnprintf(buf, PAGE_SIZE, "Get panel0 serial number: %llx\n",
 							serial_number_fir);
-			pr_info("%s read serial_number_fir 0x%x\n", __func__, serial_number_fir);
+			pr_info("%s read serial_number_fir 0x%llx\n", __func__, serial_number_fir);
 			return ret;
 		}
-	}
-
-	if (!display->panel->panel_initialized) {
-		printk(KERN_ERR"%s panel initialized = false\n", __func__);
-		return ret;
 	}
 
 	/*
@@ -961,6 +1005,16 @@ static ssize_t oplus_display_get_panel_serial_number(struct kobject *obj,
 	 * retry when found panel_serial_info is abnormal.
 	 */
 	for (i = 0; i < 5; i++) {
+		if (get_oplus_display_power_status() != OPLUS_DISPLAY_POWER_ON) {
+			printk(KERN_ERR"%s display panel in off status\n", __func__);
+			return ret;
+		}
+
+		if (!display->panel->panel_initialized) {
+			printk(KERN_ERR"%s panel initialized = false\n", __func__);
+			return ret;
+		}
+
 		if (!strcmp(display->panel->name, "samsung amb655x fhd cmd mode dsc dsi panel")
 			|| !strcmp(display->panel->name, "samsung SOFE03F dsc cmd mode panel")) {
 			ret = dsi_display_read_panel_reg(get_main_display(), 0xA1, read, 18);
@@ -1010,19 +1064,57 @@ static ssize_t oplus_display_get_panel_serial_number(struct kobject *obj,
 			mutex_unlock(&display->display_lock);
 
 			ret = dsi_display_read_panel_reg(display, 0xD7, read, 8);
-		} else {
+		} else if (!strcmp(display->panel->oplus_priv.vendor_name, "A0004")) {
+				char panel_date_page[] = {0x08, 0x38, 0x1D};
+				mutex_lock(&display->display_lock);
+				mutex_lock(&display->panel->panel_lock);
+				if (display->panel->panel_initialized) {
+					if (display->config.panel_mode == DSI_OP_CMD_MODE) {
+						dsi_display_clk_ctrl(display->dsi_clk_handle, DSI_ALL_CLKS, DSI_CLK_ON);
+					}
+
+					ret = mipi_dsi_dcs_write(&display->panel->mipi_device, 0xFF, panel_date_page, sizeof(panel_date_page));
+					if (display->config.panel_mode == DSI_OP_CMD_MODE) {
+						dsi_display_clk_ctrl(display->dsi_clk_handle, DSI_ALL_CLKS, DSI_CLK_OFF);
+					}
+				}
+				mutex_unlock(&display->panel->panel_lock);
+				mutex_unlock(&display->display_lock);
+				ret = dsi_display_read_panel_reg(display, 0x81, read, 7);
+
+				panel_date_page[2] = 0x00;
+				mutex_lock(&display->display_lock);
+				mutex_lock(&display->panel->panel_lock);
+				if (display->panel->panel_initialized) {
+					if (display->config.panel_mode == DSI_OP_CMD_MODE) {
+						dsi_display_clk_ctrl(display->dsi_clk_handle, DSI_ALL_CLKS, DSI_CLK_ON);
+					}
+
+					mipi_dsi_dcs_write(&display->panel->mipi_device, 0xFF, panel_date_page, sizeof(panel_date_page));
+					if (display->config.panel_mode == DSI_OP_CMD_MODE) {
+						dsi_display_clk_ctrl(display->dsi_clk_handle, DSI_ALL_CLKS, DSI_CLK_OFF);
+					}
+				}
+				mutex_unlock(&display->panel->panel_lock);
+				mutex_unlock(&display->display_lock);
+			} else {
 			if (display->panel->oplus_ser.is_switch_page) {
 				len = sizeof(display->panel->oplus_ser.serial_number_multi_regs) - 1;
 				for (read_index = 0; read_index < len; read_index++) {
-					ret = dsi_display_read_panel_reg_switch_page(display, display->panel->oplus_ser.serial_number_multi_regs[read_index],
-						ret_val, 1);
+					if(read_serial_num_done) {
+						read[read_index] = serial_number_cache[read_index];
+					} else {
+						ret = dsi_display_read_panel_reg_switch_page(display, display->panel->oplus_ser.serial_number_multi_regs[read_index],
+	 						ret_val, 1);
 
-					read[read_index] = ret_val[0];
-					if (ret < 0) {
-						ret = scnprintf(buf, PAGE_SIZE,
-							"Get panel serial number failed, reason:%d", ret);
-						msleep(20);
-						break;
+						read[read_index] = ret_val[0];
+						serial_number_cache[read_index] = ret_val[0];
+						if (ret < 0) {
+							ret = scnprintf(buf, PAGE_SIZE,
+								"Get panel serial number failed, reason:%d", ret);
+							msleep(20);
+							break;
+						}
 					}
 				}
 			} else
@@ -1035,6 +1127,7 @@ static ssize_t oplus_display_get_panel_serial_number(struct kobject *obj,
 			msleep(20);
 			continue;
 		}
+		read_serial_num_done = true;
 
 		/*  0xA1               11th        12th    13th    14th    15th
 		 *  HEX                0x32        0x0C    0x0B    0x29    0x37
@@ -1049,6 +1142,8 @@ static ssize_t oplus_display_get_panel_serial_number(struct kobject *obj,
 			panel_serial_info.reg_index = 15;
 		} else if (!strcmp(display->panel->oplus_priv.vendor_name, "NT37701")
 			|| !strcmp(display->panel->oplus_priv.vendor_name, "NT37705")) {
+			panel_serial_info.reg_index = 0;
+		} else if (!strcmp(display->panel->oplus_priv.vendor_name, "A0004")) {
 			panel_serial_info.reg_index = 0;
 		} else if (!strcmp(display->panel->name, "samsung AMS643YE01 dsc cmd mode panel")
 			|| !strcmp(display->panel->name, "samsung ams662zs01 dvt dsc cmd mode panel")) {
@@ -1065,6 +1160,8 @@ static ssize_t oplus_display_get_panel_serial_number(struct kobject *obj,
 			if (strcmp(display->panel->name, "20085 boe nt37701 amoled fhd+ panel")) {
 				panel_serial_info.year += 1;
 			}
+		} else if (!strcmp(display->panel->name, "AA254 p 3 A0004 dsc cmd mode panel")) {
+			panel_serial_info.year += 11;
 		}
 		panel_serial_info.month		= read[panel_serial_info.reg_index]	& 0x0F;
 		panel_serial_info.day		= read[panel_serial_info.reg_index + 1]	& 0x1F;

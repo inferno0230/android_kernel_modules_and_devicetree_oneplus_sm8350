@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  * Copyright (c) 2016-2021, The Linux Foundation. All rights reserved.
  */
 
@@ -547,7 +548,7 @@ static int dsi_panel_power_on(struct dsi_panel *panel)
 	if (!strcmp(panel->name,"samsung ams662zs01 fhd cmd mode dsc dsi panel"))
 		mdelay(2);
 #endif
-	if(strcmp(panel->name,"boe nt37705 dsc cmd mode panel"))
+	if(strcmp(panel->oplus_priv.vendor_name, "NT37705"))
 	{
 		rc = dsi_panel_reset(panel);
 		if (rc) {
@@ -658,9 +659,13 @@ static int dsi_panel_power_off(struct dsi_panel *panel)
 	}
 //#endif /*OPLUS_FEATURE_TP_BASIC*/
 #endif
-	if (!strcmp(panel->name,"boe nt37705 dsc cmd mode panel"))
+	if (!strcmp(panel->oplus_priv.vendor_name, "NT37705"))
 		mdelay(2);
 
+	if (panel->is_twm_en || panel->skip_panel_off) {
+		DSI_DEBUG("TWM Enabled, skip panel power off\n");
+		return rc;
+	}
 	if (gpio_is_valid(panel->reset_config.disp_en_gpio))
 		gpio_set_value(panel->reset_config.disp_en_gpio, 0);
 
@@ -977,7 +982,8 @@ static int dsi_panel_update_backlight(struct dsi_panel *panel,
 
 	if ((!strcmp(panel->name, "samsung ams662zs01 dvt dsc cmd mode panel"))
 		|| (!strcmp(panel->oplus_priv.vendor_name, "NT37705"))
-		|| (!strcmp(panel->oplus_priv.vendor_name, "ILI7838A"))) {
+		|| (!strcmp(panel->oplus_priv.vendor_name, "ILI7838A"))
+		|| (!strcmp(panel->oplus_priv.vendor_name, "A0004"))) {
 		if ((get_oplus_display_scene() == OPLUS_DISPLAY_AOD_SCENE) && ( bl_lvl == 0)) {
 			pr_err("dsi_cmd AOD mode return bl_lvl:%d\n",bl_lvl);
 			return 0;
@@ -985,6 +991,9 @@ static int dsi_panel_update_backlight(struct dsi_panel *panel,
 	}
 
 	if (panel->is_hbm_enabled && (bl_lvl != 0)) {
+#ifdef CONFIG_DRM_LCM_BRIGHTNESS_NOTIFY
+		lcdinfo_notify(LCM_BRIGHTNESS_TYPE, &bl_lvl);
+#endif /* CONFIG_DRM_LCM_BRIGHTNESS_NOTIFY */
 		pr_err("backlight smooth check racing issue is_hbm_enabled\n");
 		return 0;
 	}
@@ -1184,7 +1193,7 @@ static int dsi_panel_update_backlight(struct dsi_panel *panel,
 		else if(!strcmp(panel->oplus_priv.vendor_name, "AMB670YF01")) {
 				oplus_display_panel_backlight_mapping(panel, &bl_lvl);
 		}
-		else if(strcmp(panel->name,"tianma ili7838a dsc cmd mode panel")){
+		else if(!(!strcmp(panel->oplus_priv.vendor_name,"ILI7838A") || !strcmp(panel->oplus_priv.vendor_name,"A0004"))){
 			if (bl_lvl > panel->bl_config.bl_normal_max_level)
 				payload[1] = 0xE0;
 			else
@@ -1639,6 +1648,18 @@ static int dsi_panel_parse_pixel_format(struct dsi_host_common_cfg *host,
 		break;
 	case 18:
 		fmt = DSI_PIXEL_FORMAT_RGB666;
+		break;
+	case 30:
+		/*
+		 * The destination pixel format (host->dst_format) depends
+		 * upon the compression, and should be RGB888 if the DSC is
+		 * enable.
+		 * The DSC status information is inside the timing modes, that
+		 * is parsed during first dsi_display_get_modes() call.
+		 * The dst_format will be updated there depending upon the
+		 * DSC status.
+		 */
+		fmt = DSI_PIXEL_FORMAT_RGB101010;
 		break;
 	case 24:
 	default:
@@ -2951,6 +2972,9 @@ static int dsi_panel_parse_misc_features(struct dsi_panel *panel)
 
 	panel->reset_gpio_always_on = utils->read_bool(utils->data,
 			"qcom,platform-reset-gpio-always-on");
+
+	panel->skip_panel_off = utils->read_bool(utils->data,
+			"qcom,skip-panel-power-off");
 
 	panel->spr_info.enable = false;
 	panel->spr_info.pack_type = MSM_DISPLAY_SPR_TYPE_MAX;
@@ -5481,6 +5505,10 @@ int dsi_panel_set_nolp(struct dsi_panel *panel)
 	pr_err("debug for dsi_panel_set_nolp\n");
 #endif
 
+	if (panel->is_twm_en) {
+		DSI_DEBUG("TWM Enabled, skip idle off\n");
+		return rc;
+	}
 	mutex_lock(&panel->panel_lock);
 	if (!panel->panel_initialized)
 		goto exit;
@@ -5538,7 +5566,7 @@ int dsi_panel_prepare(struct dsi_panel *panel)
 	}
 
 	mutex_lock(&panel->panel_lock);
-	if(!strcmp(panel->name,"boe nt37705 dsc cmd mode panel")) {
+	if(!strcmp(panel->oplus_priv.vendor_name, "NT37705")) {
 		rc = dsi_panel_reset(panel);
 		if (rc) {
 			DSI_ERR("[%s] failed to reset panel, rc=%d\n", panel->name, rc);
@@ -6051,6 +6079,10 @@ int dsi_panel_disable(struct dsi_panel *panel)
 	if (iris_is_dual_supported() && panel->is_secondary)
 		return rc;
 #endif
+	if (panel->is_twm_en) {
+		DSI_DEBUG("TWM Enabled, skip panel disable\n");
+		return rc;
+	}
 	mutex_lock(&panel->panel_lock);
 
 	/* Avoid sending panel off commands when ESD recovery is underway */

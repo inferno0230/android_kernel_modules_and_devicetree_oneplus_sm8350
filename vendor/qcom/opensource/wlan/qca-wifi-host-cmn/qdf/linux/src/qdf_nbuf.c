@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2014-2021 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -71,6 +72,10 @@
 #define RADIOTAP_VHT_BW_40	1
 #define RADIOTAP_VHT_BW_80	4
 #define RADIOTAP_VHT_BW_160	11
+
+/* tx status */
+#define RADIOTAP_TX_STATUS_FAIL		1
+#define RADIOTAP_TX_STATUS_NOACK	2
 
 /* channel number to freq conversion */
 #define CHANNEL_NUM_14 14
@@ -1726,6 +1731,50 @@ bool __qdf_nbuf_data_is_dns_response(uint8_t *data)
 }
 
 /**
+ * __qdf_nbuf_data_is_tcp_fin() - check if skb data is a tcp fin
+ * @data: Pointer to network data buffer
+ *
+ * This api is to check if the packet is tcp fin.
+ *
+ * Return: true if packet is tcp fin packet.
+ *         false otherwise.
+ */
+bool __qdf_nbuf_data_is_tcp_fin(uint8_t *data)
+{
+	uint8_t op_code;
+
+	op_code = (uint8_t)(*(uint8_t *)(data +
+				QDF_NBUF_PKT_TCP_OPCODE_OFFSET));
+
+	if (op_code == QDF_NBUF_PKT_TCPOP_FIN)
+		return true;
+
+	return false;
+}
+
+/**
+ * __qdf_nbuf_data_is_tcp_fin_ack() - check if skb data is a tcp fin ack
+ * @data: Pointer to network data buffer
+ *
+ * This api is to check if the tcp packet is fin ack.
+ *
+ * Return: true if packet is tcp fin ack packet.
+ *         false otherwise.
+ */
+bool __qdf_nbuf_data_is_tcp_fin_ack(uint8_t *data)
+{
+	uint8_t op_code;
+
+	op_code = (uint8_t)(*(uint8_t *)(data +
+				QDF_NBUF_PKT_TCP_OPCODE_OFFSET));
+
+	if (op_code == QDF_NBUF_PKT_TCPOP_FIN_ACK)
+		return true;
+
+	return false;
+}
+
+/**
  * __qdf_nbuf_data_is_tcp_syn() - check if skb data is a tcp syn
  * @data: Pointer to network data buffer
  *
@@ -1764,6 +1813,28 @@ bool __qdf_nbuf_data_is_tcp_syn_ack(uint8_t *data)
 
 	if (op_code == QDF_NBUF_PKT_TCPOP_SYN_ACK)
 		return true;
+	return false;
+}
+
+/**
+ * __qdf_nbuf_data_is_tcp_rst() - check if skb data is a tcp rst
+ * @data: Pointer to network data buffer
+ *
+ * This api is to check if the tcp packet is rst.
+ *
+ * Return: true if packet is tcp rst packet.
+ *         false otherwise.
+ */
+bool __qdf_nbuf_data_is_tcp_rst(uint8_t *data)
+{
+	uint8_t op_code;
+
+	op_code = (uint8_t)(*(uint8_t *)(data +
+				QDF_NBUF_PKT_TCP_OPCODE_OFFSET));
+
+	if (op_code == QDF_NBUF_PKT_TCPOP_RST)
+		return true;
+
 	return false;
 }
 
@@ -4371,6 +4442,7 @@ qdf_nbuf_update_radiotap_he_mu_other_flags(struct mon_rx_status *rx_status,
  * Number after '+' indicates maximum possible increase due to alignment
  */
 
+#define RADIOTAP_TX_FLAGS_LEN (2 + 1)
 #define RADIOTAP_VHT_FLAGS_LEN (12 + 1)
 #define RADIOTAP_HE_FLAGS_LEN (12 + 1)
 #define RADIOTAP_HE_MU_FLAGS_LEN (8 + 1)
@@ -4389,6 +4461,7 @@ qdf_nbuf_update_radiotap_he_mu_other_flags(struct mon_rx_status *rx_status,
 	(sizeof(struct qdf_radiotap_ext2))
 #define RADIOTAP_HEADER_LEN (sizeof(struct ieee80211_radiotap_header) + \
 				RADIOTAP_FIXED_HEADER_LEN + \
+				RADIOTAP_TX_FLAGS_LEN + \
 				RADIOTAP_HT_FLAGS_LEN + \
 				RADIOTAP_VHT_FLAGS_LEN + \
 				RADIOTAP_AMPDU_STATUS_LEN + \
@@ -4445,6 +4518,41 @@ static unsigned int qdf_nbuf_update_radiotap_ampdu_flags(
 #define QDF_MON_STATUS_GET_RSSI_IN_DBM(rx_status) \
 (rx_status->rssi_comb + rx_status->chan_noise_floor)
 #endif
+
+/**
+ * qdf_nbuf_update_radiotap_tx_flags() - Update radiotap header tx flags
+ * @rx_status: Pointer to rx_status.
+ * @rtap_buf: Buf to which tx info has to be updated.
+ * @rtap_len: Current length of radiotap buffer
+ *
+ * Return: Length of radiotap after tx flags updated.
+ */
+static unsigned int qdf_nbuf_update_radiotap_tx_flags(
+						struct mon_rx_status *rx_status,
+						uint8_t *rtap_buf,
+						uint32_t rtap_len)
+{
+	/*
+	 * IEEE80211_RADIOTAP_TX_FLAGS u16
+	 */
+
+	uint16_t tx_flags = 0;
+
+	rtap_len = qdf_align(rtap_len, 2);
+
+	switch (rx_status->tx_status) {
+	case RADIOTAP_TX_STATUS_FAIL:
+		tx_flags |= IEEE80211_RADIOTAP_F_TX_FAIL;
+		break;
+	case RADIOTAP_TX_STATUS_NOACK:
+		tx_flags |= IEEE80211_RADIOTAP_F_TX_NOACK;
+		break;
+	}
+	put_unaligned_le16(tx_flags, &rtap_buf[rtap_len]);
+	rtap_len += 2;
+
+	return rtap_len;
+}
 
 /**
  * qdf_nbuf_update_radiotap() - Update radiotap header from rx_status
@@ -4537,6 +4645,21 @@ unsigned int qdf_nbuf_update_radiotap(struct mon_rx_status *rx_status,
 	if ((rtap_len - length) > RADIOTAP_FIXED_HEADER_LEN) {
 		qdf_print("length is greater than RADIOTAP_FIXED_HEADER_LEN");
 		return 0;
+	}
+
+	/* update tx flags for pkt capture*/
+	if (rx_status->add_rtap_ext) {
+		length = rtap_len;
+		rthdr->it_present |=
+			cpu_to_le32(1 << IEEE80211_RADIOTAP_TX_FLAGS);
+		rtap_len = qdf_nbuf_update_radiotap_tx_flags(rx_status,
+							     rtap_buf,
+							     rtap_len);
+
+		if ((rtap_len - length) > RADIOTAP_TX_FLAGS_LEN) {
+			qdf_print("length is greater than RADIOTAP_TX_FLAGS_LEN");
+			return 0;
+		}
 	}
 
 	if (rx_status->ht_flags) {

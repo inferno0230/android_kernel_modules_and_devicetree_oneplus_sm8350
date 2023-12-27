@@ -81,6 +81,8 @@ static const struct panel_ioctl_desc panel_ioctls[] = {
 	PANEL_IOCTL_DEF(PANEL_IOCTL_SET_OPLUS_BRIGHTNESS, oplus_display_panel_set_brightness),
 	PANEL_IOCTL_DEF(PANEL_IOCTL_GET_OPLUS_BRIGHTNESS, oplus_display_panel_get_brightness),
 	PANEL_IOCTL_DEF(PANEL_IOCTL_GET_LCD_MAX_BRIGHTNESS, oplus_display_panel_get_lcd_max_brightness),
+	PANEL_IOCTL_DEF(PANEL_IOCTL_GET_PANEL_NAME, oplus_display_panel_get_panel_name),
+	PANEL_IOCTL_DEF(PANEL_IOCTL_GET_PANEL_BPP, oplus_display_panel_get_panel_bpp),
 	PANEL_IOCTL_DEF(PANEL_IOCTL_SET_DITHER_STATUS, oplus_display_panel_set_dither),
 	PANEL_IOCTL_DEF(PANEL_IOCTL_GET_DITHER_STATUS, oplus_display_panel_get_dither),
 	PANEL_IOCTL_DEF(PANEL_IOCTL_SET_TE_REFCOUNT_ENABLE, oplus_enable_te_refcount),

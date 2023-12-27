@@ -34,7 +34,7 @@ static inline void binder_set_inherit_ux(struct task_struct *thread_task, struct
 static inline void binder_set_inherit_ux_listpick(struct task_struct *thread_task, struct task_struct *from_task)
 {
 	if (!test_task_ux(thread_task)) {
-		set_inherit_ux(thread_task, INHERIT_UX_BINDER, from_task->ux_depth, SA_TYPE_LISTPICK);
+		set_inherit_ux(thread_task, INHERIT_UX_BINDER, from_task->ux_depth, SA_TYPE_LIGHT+UX_PRIORITY_TOP_APP);
 	}
 }
 

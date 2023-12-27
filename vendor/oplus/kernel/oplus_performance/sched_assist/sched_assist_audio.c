@@ -380,11 +380,20 @@ void oplus_sched_assist_audio_proc_remove(struct proc_dir_entry *dir)
 static void set_sched_boost(struct task_struct *p, bool enable)
 {
 	int ux_state = p->ux_state;
+#if IS_ENABLED(CONFIG_OPLUS_FEATURE_SCHED_UX_PRIORITY)
+	if (enable) {
+		ux_state = (ux_state | SA_TYPE_LIGHT | UX_PRIORITY_AUDIO);
+	} else {
+		ux_state = (ux_state & ~(SA_TYPE_LIGHT | SCHED_ASSIST_UX_PRIORITY_MASK));
+	}
+#else
 	if (enable) {
 		p->ux_state = (ux_state | SA_TYPE_LIGHT);
 	} else {
 		p->ux_state = (ux_state & ~SA_TYPE_LIGHT);
 	}
+#endif
+	oplus_set_ux_state_lock(p, ux_state, true);
 #if IS_ENABLED(CONFIG_SCHED_WALT)
 	sched_set_wake_up_idle(p, enable);
 #endif

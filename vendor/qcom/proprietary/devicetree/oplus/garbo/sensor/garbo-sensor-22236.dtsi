@@ -12,9 +12,11 @@
             compatible = "oplus,kookong_ir_core";
             status = "okay";
 
-            vdd-type = <1>; /*0: internal LDO , 1: external LOD*/
-            vdd-min-vol = <3060>;
-            vdd-max-vol = <3060>;
+            vdd-type = <0>; /*0: internal LDO , 1: external LOD*/
+            vdd-supply = <&pm8008i_l5>;
+            vdd-min-vol = <3064000>;
+            vdd-max-vol = <3064000>;
+            vdd-change-enable = <1>; // when value = 1, set different vdd begain power on
         };
         /*enum sensor_id { OPLUS_ACCEL,OPLUS_GYRO,OPLUS_MAG,OPLUS_LIGHT,OPLUS_PROXIMITY,OPLUS_SAR,OPLUS_CT,OPLUS_BAROMETER,SENSORS_NUM};*/
         oplus_sensor: oplus_sensor {
@@ -22,15 +24,9 @@
                 als-row-coe = <110>;
                 /*enum {LSM6DSM = 0x01, BMI160 = 0x02, LSM6DS3 = 0x04, BMI260 = 0x08};*/
                 gsensor@0 {
-                        sensor-name = <0x40>;//ICM4X607
-                        sensor-direction = <5>;
+                        sensor-name = <0x08>;//BMI260
+                        sensor-direction = <7>;
                         sensor-index = <0>;//source num
-                        sensor-type = <0>;//OPLUS_ACCEL
-                };
-                gsensor@1 {
-                        sensor-name = <0x10>;//LSM6DSO
-                        sensor-direction = <5>;
-                        sensor-index = <1>;//source num
                         sensor-type = <0>;//OPLUS_ACCEL
                 };
                 /* enum {AKM0991X = 0x01, MMC5603 = 0x02};*/
@@ -40,7 +36,7 @@
                         sensor-index = <0>;
                         sensor-type = <2>;//OPLUS_MAG
                         parameter-number= <18>;
-                        soft-mag-parameter = <10175 0 460 0 206 0 423 0 9199 0 46 1 211 1 126 0 10313 0>;//e00 sign e01 sign...
+                        soft-mag-parameter = <9654 0 671 0 47 0 631 0 9143 0 31 1 140 0 173 1 10166 0>;//e00 sign e01 sign...
                 };
                 /*enum {STK3A5X=0x01,TCS3701=0x02,TCS3408=0x04,STK326X};*/
                 /*enum {NORMAL=0x01,UNDER_LCD=0x02,VIRTUAL_UNDER_LCD=0x03}*/
@@ -106,9 +102,18 @@
                         cal_offset_margin = <80>;
                         /*sensor-reg start*/
                         parameter-number = <4>;
-                        sensor-reg = <0xB9 0x1C
-                                      0xBC 0xFB>;
+                        sensor-reg = <0xB9 0x21
+                                      0xBC 0xFB>; //70mA
                         /*sensor-reg end*/
+                };
+                ssensor@0 {
+                    sensor-name = <0x2>;//SX9331
+                    sensor-index = <0>;
+                    sensor-type = <5>;//OPLUS_SAR
+                    irq-number = <141>;
+                    channel-num = <3>;
+                    is-dc-offset = <1>;
+                    dc-offset = <4172 3560 5268 4 5 6259 5340 7903 30004 30005>;
                 };
                 /*virtual sensor
                 enum sensor_algo_id {

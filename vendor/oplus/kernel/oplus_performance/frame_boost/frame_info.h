@@ -17,7 +17,7 @@ int set_frame_util_min(int min_util, bool clear);
 bool set_frame_rate(unsigned int frame_rate);
 void set_max_frame_rate(unsigned int frame_rate);
 bool is_high_frame_rate(void);
-int get_frame_rate(void);
+unsigned int get_frame_rate(void);
 int set_frame_margin(int margin_ms);
 bool check_last_compose_time(bool composition);
 

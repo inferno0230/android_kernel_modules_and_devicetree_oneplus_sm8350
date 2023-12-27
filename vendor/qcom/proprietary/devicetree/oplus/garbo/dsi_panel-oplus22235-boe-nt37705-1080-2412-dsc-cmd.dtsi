@@ -1,6 +1,6 @@
 &mdss_mdp {
 	dsi_oplus22235_boe_nt37705_1080_2412_dsc_cmd: qcom,mdss_dsi_oplus22235_boe_nt37705_1080_2412_dsc_cmd {
-		qcom,mdss-dsi-panel-name = "boe nt37705 dsc cmd mode panel";
+		qcom,mdss-dsi-panel-name = "boe nt37705 dsc cmd mode panel 22235";
 		oplus,mdss-dsi-vendor-name = "NT37705";
 		oplus,mdss-dsi-manufacture = "BOE1024";
 		qcom,mdss-dsi-panel-type = "dsi_cmd_mode";
@@ -25,7 +25,7 @@
 		qcom,mdss-dsi-dma-trigger = "trigger_sw";
 		qcom,mdss-loading-effect;
 		qcom,mdss-dsi-mdp-trigger = "none";
-		qcom,mdss-dsi-reset-sequence = <1 2>, <0 5>, <1 10>;
+		qcom,mdss-dsi-reset-sequence = <1 2>, <0 5>, <1 20>;
 		qcom,mdss-dsi-te-pin-select = <1>;
 		qcom,mdss-dsi-te-dcs-command = <1>;
 		qcom,mdss-pan-physical-width-dimension = <70>;
@@ -65,7 +65,7 @@
 				qcom,mdss-dsc-version = <0x12>;
 				qcom,mdss-dsi-timing-default;
 				qcom,mdss-dsi-panel-framerate = <120>;
-				qcom,mdss-dsi-panel-clockrate = <970000000>;
+				qcom,mdss-dsi-panel-clockrate = <978000000>;
 				qcom,mdss-dsi-panel-width = <1080>;
 				qcom,mdss-dsi-panel-height = <2412>;
 
@@ -116,6 +116,9 @@
 					15 01 00 00 00 00 02 6F 03
 					15 01 00 00 00 00 02 C7 00
 
+					39 01 00 00 00 00 06 F0 55 AA 52 08 01
+					15 01 00 00 00 00 02 CD 61
+
 					//DSPOSC=121.9MHz
 					39 01 00 00 00 00 05 FF AA 55 A5 80
 
@@ -142,7 +145,7 @@
 					15 01 00 00 00 00 02 6F 12
 					15 01 00 00 00 00 02 FE 41
 
-					//Demura 同步
+					//Demura 同锟斤拷
 					15 01 00 00 00 00 02 6F 13
 					15 01 00 00 00 00 02 FD 21
 
@@ -200,11 +203,14 @@
 
 				qcom,mdss-dsi-post-on-backlight = [
 					/* Display On */
-					05 01 00 00 00 00 02 29 00
+					05 01 00 00 00 00 01 29
 				];
 				qcom,mdss-dsi-off-command=[
-					//39 01 00 00 00 00 06 F0 55 AA 52 08 01
-					//15 01 00 00 00 00 02 CE 0C
+					39 00 00 00 00 00 06 F0 55 AA 52 08 00
+					15 00 00 00 00 00 02 6F 0E
+					15 00 00 00 00 00 02 B5 4F
+					15 00 00 00 00 00 02 65 00
+					05 01 00 00 11 00 01 38
 					05 01 00 00 0A 00 02 28 00
 					05 01 00 00 78 00 02 10 00
 				];
@@ -213,16 +219,25 @@
 					15 00 00 00 00 00 02 6F 04
 					39 01 00 00 09 00 03 51 07 5F
 					/* AOD Mode ON Setting */
+					39 00 00 00 00 00 06 F0 55 AA 52 08 00
+					15 00 00 00 00 00 02 6F 0E
+					15 00 00 00 00 00 02 B5 50
 					05 01 00 00 14 00 01 39
 					15 01 00 00 11 00 02 65 01
 				];
 				qcom,mdss-dsi-nolp-command = [
 					/* AOD OFF */
+					39 00 00 00 00 00 06 F0 55 AA 52 08 00
+					15 00 00 00 00 00 02 6F 0E
+					15 00 00 00 00 00 02 B5 4F
 					15 00 00 00 00 00 02 65 00
 					05 01 00 00 11 00 01 38
 				];
 				qcom,mdss-dsi-aod-hbm-on-command = [
 					/* AOD OFF */
+					39 00 00 00 00 00 06 F0 55 AA 52 08 00
+					15 00 00 00 00 00 02 6F 0E
+					15 00 00 00 00 00 02 B5 4F
 					15 00 00 00 00 00 02 65 00
 					05 01 00 00 11 00 01 38
 					/* Hbm ON */
@@ -235,6 +250,9 @@
 					15 00 00 00 00 00 02 6F 04
 					39 01 00 00 09 00 03 51 07 5F
 					/* AOD Mode ON Setting */
+					39 00 00 00 00 00 06 F0 55 AA 52 08 00
+					15 00 00 00 00 00 02 6F 0E
+					15 00 00 00 00 00 02 B5 50
 					05 01 00 00 14 00 01 39
 					15 01 00 00 11 00 02 65 01
 				];
@@ -296,7 +314,7 @@
 				qcom,mdss-dsc-version = <0x12>;
 				qcom,mdss-dsi-timing-default;
 				qcom,mdss-dsi-panel-framerate = <90>;
-				qcom,mdss-dsi-panel-clockrate = <970000000>;
+				qcom,mdss-dsi-panel-clockrate = <978000000>;
 				qcom,mdss-dsi-panel-width = <1080>;
 				qcom,mdss-dsi-panel-height = <2412>;
 
@@ -347,6 +365,9 @@
 					15 01 00 00 00 00 02 6F 03
 					15 01 00 00 00 00 02 C7 00
 
+					39 01 00 00 00 00 06 F0 55 AA 52 08 01
+					15 01 00 00 00 00 02 CD 61
+
 					//DSPOSC=121.9MHz
 					39 01 00 00 00 00 05 FF AA 55 A5 80
 					15 01 00 00 00 00 02 6F 1A
@@ -372,7 +393,7 @@
 					15 01 00 00 00 00 02 6F 12
 					15 01 00 00 00 00 02 FE 41
 
-					//Demura 同步
+					//Demura 同锟斤拷
 					15 01 00 00 00 00 02 6F 13
 					15 01 00 00 00 00 02 FD 21
 
@@ -431,11 +452,14 @@
 
 				qcom,mdss-dsi-post-on-backlight = [
 					/* Display On */
-					05 01 00 00 00 00 02 29 00
+					05 01 00 00 00 00 01 29
 				];
 				qcom,mdss-dsi-off-command=[
-					//39 01 00 00 00 00 06 F0 55 AA 52 08 01
-					//15 01 00 00 00 00 02 CE 0C
+					39 00 00 00 00 00 06 F0 55 AA 52 08 00
+					15 00 00 00 00 00 02 6F 0E
+					15 00 00 00 00 00 02 B5 4F
+					15 00 00 00 00 00 02 65 00
+					05 01 00 00 17 00 01 38
 					05 01 00 00 0A 00 02 28 00
 					05 01 00 00 78 00 02 10 00
 				];
@@ -444,16 +468,25 @@
 					15 00 00 00 00 00 02 6F 04
 					39 01 00 00 0C 00 03 51 07 5F
 					/* AOD Mode ON Setting */
+					39 00 00 00 00 00 06 F0 55 AA 52 08 00
+					15 00 00 00 00 00 02 6F 0E
+					15 00 00 00 00 00 02 B5 50
 					05 01 00 00 14 00 01 39
 					15 01 00 00 17 00 02 65 01
 				];
 				qcom,mdss-dsi-nolp-command = [
 					/* AOD OFF */
+					39 00 00 00 00 00 06 F0 55 AA 52 08 00
+					15 00 00 00 00 00 02 6F 0E
+					15 00 00 00 00 00 02 B5 4F
 					15 00 00 00 00 00 02 65 00
 					05 01 00 00 17 00 01 38
 				];
 				qcom,mdss-dsi-aod-hbm-on-command = [
 					/* AOD OFF */
+					39 00 00 00 00 00 06 F0 55 AA 52 08 00
+					15 00 00 00 00 00 02 6F 0E
+					15 00 00 00 00 00 02 B5 4F
 					15 00 00 00 00 00 02 65 00
 					05 01 00 00 17 00 01 38
 					/* Hbm ON */
@@ -466,6 +499,9 @@
 					15 00 00 00 00 00 02 6F 04
 					39 01 00 00 0C 00 03 51 07 5F
 					/* AOD Mode ON Setting */
+					39 00 00 00 00 00 06 F0 55 AA 52 08 00
+					15 00 00 00 00 00 02 6F 0E
+					15 00 00 00 00 00 02 B5 50
 					05 01 00 00 14 00 01 39
 					15 01 00 00 17 00 02 65 01
 				];
@@ -526,7 +562,7 @@
 				qcom,mdss-dsc-version = <0x12>;
 				qcom,mdss-dsi-timing-default;
 				qcom,mdss-dsi-panel-framerate = <60>;
-				qcom,mdss-dsi-panel-clockrate = <970000000>;
+				qcom,mdss-dsi-panel-clockrate = <978000000>;
 				qcom,mdss-dsi-panel-width = <1080>;
 				qcom,mdss-dsi-panel-height = <2412>;
 
@@ -577,6 +613,9 @@
 					15 01 00 00 00 00 02 6F 03
 					15 01 00 00 00 00 02 C7 00
 
+					39 01 00 00 00 00 06 F0 55 AA 52 08 01
+					15 01 00 00 00 00 02 CD 61
+
 					//DSPOSC=121.9MHz
 					39 01 00 00 00 00 05 FF AA 55 A5 80
 					15 01 00 00 00 00 02 6F 1A
@@ -602,7 +641,7 @@
 					15 01 00 00 00 00 02 6F 12
 					15 01 00 00 00 00 02 FE 41
 
-					//Demura 同步
+					//Demura 同锟斤拷
 					15 01 00 00 00 00 02 6F 13
 					15 01 00 00 00 00 02 FD 21
 
@@ -660,11 +699,14 @@
 
 				qcom,mdss-dsi-post-on-backlight = [
 					/* Display On */
-					05 01 00 00 00 00 02 29 00
+					05 01 00 00 00 00 01 29
 				];
 				qcom,mdss-dsi-off-command=[
-					//39 01 00 00 00 00 06 F0 55 AA 52 08 01
-					//15 01 00 00 00 00 02 CE 0C
+					39 00 00 00 00 00 06 F0 55 AA 52 08 00
+					15 00 00 00 00 00 02 6F 0E
+					15 00 00 00 00 00 02 B5 4F
+					15 00 00 00 00 00 02 65 00
+					05 01 00 00 22 00 01 38
 					05 01 00 00 0A 00 02 28 00
 					05 01 00 00 78 00 02 10 00
 				];
@@ -673,16 +715,25 @@
 					15 00 00 00 00 00 02 6F 04
 					39 01 00 00 11 00 03 51 07 5F
 					/* AOD Mode ON Setting */
+					39 00 00 00 00 00 06 F0 55 AA 52 08 00
+					15 00 00 00 00 00 02 6F 0E
+					15 00 00 00 00 00 02 B5 50
 					05 01 00 00 14 00 01 39
 					15 01 00 00 22 00 02 65 01
 				];
 				qcom,mdss-dsi-nolp-command = [
 					/* AOD OFF */
+					39 00 00 00 00 00 06 F0 55 AA 52 08 00
+					15 00 00 00 00 00 02 6F 0E
+					15 00 00 00 00 00 02 B5 4F
 					15 00 00 00 00 00 02 65 00
 					05 01 00 00 22 00 01 38
 				];
 				qcom,mdss-dsi-aod-hbm-on-command = [
 					/* AOD OFF */
+					39 00 00 00 00 00 06 F0 55 AA 52 08 00
+					15 00 00 00 00 00 02 6F 0E
+					15 00 00 00 00 00 02 B5 4F
 					15 00 00 00 00 00 02 65 00
 					05 01 00 00 22 00 01 38
 					/* Hbm ON */
@@ -695,6 +746,9 @@
 					15 00 00 00 00 00 02 6F 04
 					39 01 00 00 11 00 03 51 07 5F
 					/* AOD Mode ON Setting */
+					39 00 00 00 00 00 06 F0 55 AA 52 08 00
+					15 00 00 00 00 00 02 6F 0E
+					15 00 00 00 00 00 02 B5 50
 					05 01 00 00 14 00 01 39
 					15 01 00 00 22 00 02 65 01
 				];
@@ -770,34 +824,83 @@
 	oplus,dsi-fod-brightness = <0 0xff>,
 			<2 0xee>,
 			<4 0xee>,
-			<6 0xed>,
-			<8 0xed>,
-			<10 0xed>,
-			<20 0xed>,
-			<36 0xec>,
-			<60 0xec>,
-			<90 0xeb>,
-			<140 0xeb>,
-			<200 0xe9>,
-			<300 0xe6>,
-			<458 0xe1>,
-			<605 0xdb>,
-			<743 0xd3>,
-			<912 0xca>,
-			<1062 0xc3>,
-			<1187 0xbd>,
-			<1393 0xb3>,
-			<1611 0xa8>,
-			<1787 0x9f>,
-			<2000 0x94>,
-			<2200 0x89>,
-			<2400 0x7f>,
-			<2600 0x75>,
-			<2800 0x6a>,
-			<3000 0x5f>,
-			<3200 0x53>,
-			<3400 0x46>,
-			<3515 0x40>;
+			<6 0xee>,
+			<8 0xee>,
+			<10 0xee>,
+			<22 0xee>,
+			<40 0xed>,
+			<65 0xec>,
+			<107 0xec>,
+			<139 0xeb>,
+			<173 0xea>,
+			<204 0xe9>,
+			<237 0xe8>,
+			<267 0xe7>,
+			<304 0xe6>,
+			<335 0xe5>,
+			<365 0xe4>,
+			<395 0xe3>,
+			<424 0xe2>,
+			<454 0xe1>,
+			<482 0xe0>,
+			<507 0xdf>,
+			<536 0xde>,
+			<554 0xdd>,
+			<568 0xdc>,
+			<587 0xdb>,
+			<603 0xda>,
+			<620 0xd9>,
+			<640 0xd8>,
+			<654 0xd7>,
+			<670 0xd6>,
+			<690 0xd5>,
+			<708 0xd4>,
+			<724 0xd3>,
+			<746 0xd2>,
+			<764 0xd1>,
+			<781 0xd0>,
+			<804 0xcf>,
+			<824 0xce>,
+			<842 0xcd>,
+			<861 0xcc>,
+			<881 0xcb>,
+			<901 0xca>,
+			<921 0xc9>,
+			<942 0xc8>,
+			<959 0xc7>,
+			<977 0xc6>,
+			<995 0xc5>,
+			<1015 0xc4>,
+			<1033 0xc3>,
+			<1054 0xc2>,
+			<1078 0xc1>,
+			<1098 0xc0>,
+			<1121 0xbf>,
+			<1137 0xbe>,
+			<1159 0xbd>,
+			<1178 0xbc>,
+			<1197 0xbb>,
+			<1222 0xba>,
+			<1241 0xb9>,
+			<1260 0xb8>,
+			<1281 0xb7>,
+			<1307 0xb6>,
+			<1325 0xb5>,
+			<1345 0xb4>,
+			<1351 0xb3>,
+			<1379 0xb2>,
+			<1402 0xb1>,
+			<1607 0xa6>,
+			<1792 0x9c>,
+			<1995 0x91>,
+			<2203 0x85>,
+			<2405 0x7a>,
+			<2600 0x6f>,
+			<2800 0x63>,
+			<3000 0x56>,
+			<3200 0x49>,
+			<3400 0x3d>,
+			<3515 0x35>;
 	//oplus,esd-check-flag-enabled;
 	qcom,esd-check-enabled;
 	qcom,mdss-dsi-panel-status-check-mode = "reg_read";

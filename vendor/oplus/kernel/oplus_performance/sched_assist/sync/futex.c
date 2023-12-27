@@ -12,6 +12,11 @@
 #include <linux/sched_assist/sched_assist_common.h>
 
 #include "locking_main.h"
+#ifdef CONFIG_OPLUS_LOCKING_MONITOR
+#include "kern_lock_stat.h"
+#endif
+
+#include "futex.h"
 
 #ifdef CONFIG_MMU
 # define FLAGS_SHARED		0x01
@@ -29,12 +34,13 @@
 
 #define FUTEX_WAITER_TOLERATE_THRESHOLD (200000000) /* 200ms */
 
-atomic64_t futex_inherit_set_times;
-atomic64_t futex_inherit_unset_times;
-atomic64_t futex_inherit_useless_times;
+static long futex_ux_set_cnt;
+static long futex_ux_unset_cnt;
+static long futex_set_blocked_ux_cnt;
 
-atomic64_t futex_low_count;
-atomic64_t futex_high_count;
+module_param(futex_ux_set_cnt, long, 0444);
+module_param(futex_ux_unset_cnt, long, 0444);
+module_param(futex_set_blocked_ux_cnt, long, 0444);
 
 /*
  * Note:
@@ -73,10 +79,10 @@ static int futex_set_inherit_ux_refs(struct task_struct *holder, struct task_str
 
 		if (type == UX_STATE_NONE) {
 			if (holder->state & TASK_NORMAL)
-				atomic64_inc(&futex_inherit_useless_times);
+				atomic_long_inc((atomic_long_t*)&futex_set_blocked_ux_cnt);
 
 			set_inherit_ux(holder, INHERIT_UX_FUTEX, p->ux_depth, p->ux_state);
-			atomic64_inc(&futex_inherit_set_times);
+			atomic_long_inc((atomic_long_t*)&futex_ux_set_cnt);
 			cond_trace_printk(locking_opt_debug(LK_DEBUG_FTRACE),
 				"INHERIT_SET-holder(%-12s pid=%d tgid=%d inherit_ux=%llx) p=(%-12s pid=%d tgid=%d)\n",
 				holder->comm, holder->pid, holder->tgid, holder->inherit_ux,
@@ -85,10 +91,10 @@ static int futex_set_inherit_ux_refs(struct task_struct *holder, struct task_str
 			return INHERIT_SET;
 		} else if (type == UX_STATE_INHERIT) {
 			if (holder->state & TASK_NORMAL)
-				atomic64_inc(&futex_inherit_useless_times);
+				atomic_long_inc((atomic_long_t*)&futex_set_blocked_ux_cnt);
 
 			inc_inherit_ux_refs(holder, INHERIT_UX_FUTEX);
-			atomic64_inc(&futex_inherit_set_times);
+			atomic_long_inc((atomic_long_t*)&futex_ux_set_cnt);
 			cond_trace_printk(locking_opt_debug(LK_DEBUG_FTRACE),
 				"INHERIT_INC-holder(%-12s pid=%d tgid=%d inherit_ux=%llx) p=(%-12s pid=%d tgid=%d)\n",
 				holder->comm, holder->pid, holder->tgid, holder->inherit_ux,
@@ -115,7 +121,7 @@ static void futex_unset_inherit_ux_refs(struct task_struct *p, int value, int pa
 	 * Owner may clear it's inherit ux before waking q,
 	 * so we do sub out of condition above.
 	 */
-	atomic64_sub(value, &futex_inherit_unset_times);
+	atomic_long_sub(value, (atomic_long_t*)&futex_ux_unset_cnt);
 #endif
 	cond_trace_printk(locking_opt_debug(LK_DEBUG_FTRACE),
 		"INHERIT_CLEAR-holder(%-12s pid=%d tgid=%d inherit_ux=%llx) clear=%d path=%d\n",
@@ -223,7 +229,7 @@ static void futex_notify_waiter(unsigned long pid)
 		return;
 
 #if IS_ENABLED(CONFIG_OPLUS_FEATURE_SCHED_ASSIST)
-	is_target = test_task_ux(waiter);
+	is_target = test_task_ux(waiter) && !curr_is_ux_thread();
 #endif
 
 	if (!is_target)
@@ -253,14 +259,6 @@ out_put_waiter:
 #define NOTIFY_WAITER_SHIFT (16)
 #define NOTIFY_OWNER_MASK   ((1 << NOTIFY_WAITER_SHIFT)-1)
 #define FLAGS_OWNER_SHIFT		(8)
-enum {
-	CGROUP_RESV = 0,
-	CGROUP_DEFAULT,
-	CGROUP_FOREGROUND,
-	CGROUP_BACKGROUND,
-	CGROUP_TOP_APP,
-	CGROUP_NRS,
-};
 
 extern int thread_info_ctrl;
 
@@ -295,8 +293,7 @@ static inline bool curr_is_ux_thread_nolimit()
 	return (state == UX_STATE_INHERIT) || (state == UX_STATE_SCHED_ASSIST);
 }
 
-void locking_vh_do_futex_handler(void *unused, int cmd,
-		  unsigned int *flags, u32 __user *uaddr2)
+void locking_vh_do_futex(int cmd, unsigned int *flags, u32 __user *uaddr2)
 {
 	unsigned long waiter_pid, holder_pid;
 	struct futex_uinfo info;
@@ -306,7 +303,7 @@ void locking_vh_do_futex_handler(void *unused, int cmd,
 
 	switch (cmd) {
 	case FUTEX_WAIT:
-		fallthrough;
+		/*fallthrough;*/
 	case FUTEX_WAIT_BITSET:
 		do_something = (NULL != uaddr2) && (thread_info_ctrl || curr_is_ux_thread_nolimit());
 		if (do_something) {
@@ -334,9 +331,11 @@ void locking_vh_do_futex_handler(void *unused, int cmd,
 					if (curr_is_ux_thread_nolimit())
 						info.inform_user |= UX_FLAG_BIT;
 
+					rcu_read_lock();
 					leader = current->group_leader;
 					if (leader && (leader->ux_im_flag == IM_FLAG_SYSTEMSERVER_PID))
 						info.inform_user |= SS_FLAG_BIT;
+					rcu_read_unlock();
 
 					grp_idx = get_lock_stats_grp_idx(current);
 					info.inform_user |= grp_idx;
@@ -353,6 +352,13 @@ void locking_vh_do_futex_handler(void *unused, int cmd,
 						return;
 					}
 				}
+
+				/* C. identify lock type part */
+				if (info.cmd & TYPE_BIT) {
+					if (info.type & (LOCK_ART | LOCK_JUC)) {
+						*flags |= info.type << LOCK_TYPE_SHIFT;
+					}
+				}
 			}
 		}
 		break;
@@ -366,11 +372,13 @@ void locking_vh_do_futex_handler(void *unused, int cmd,
 	}
 }
 
-void locking_vh_futex_wait_start_handler(void *unused, unsigned int flags,
-		  u32 bitset)
+void locking_vh_futex_wait_start(unsigned int flags, u32 bitset)
 {
 	struct task_struct *holder;
 
+#ifdef CONFIG_OPLUS_LOCKING_MONITOR
+	monitor_futex_wait_start(flags, bitset);
+#endif
 	if (!curr_is_ux_thread())
 		return;
 
@@ -381,9 +389,11 @@ void locking_vh_futex_wait_start_handler(void *unused, unsigned int flags,
 	set_holder(current, holder);
 }
 
-void locking_vh_futex_wait_end_handler(void *unused, unsigned int flags,
-		  u32 bitset)
+void locking_vh_futex_wait_end(unsigned int flags, u32 bitset)
 {
+#ifdef CONFIG_OPLUS_LOCKING_MONITOR
+	monitor_futex_wait_end(flags, bitset);
+#endif
 	if (current->lkinfo.holder) {
 		if (unlikely(current->lkinfo.ux_contrib)) {
 			cond_trace_printk(locking_opt_debug(LK_DEBUG_FTRACE),
@@ -399,7 +409,7 @@ void locking_vh_futex_wait_end_handler(void *unused, unsigned int flags,
 	}
 }
 
-void locking_vh_alter_futex_plist_add_handler(void *unused, struct plist_node *node,
+void locking_vh_alter_futex_plist_add(struct plist_node *node,
 		    struct plist_head *head, bool *already_on_hb)
 {
 	struct sched_entity *se;
@@ -479,12 +489,7 @@ re_init:
 		first_normal_waiter ? first_normal_waiter->tgid : -1);
 }
 
-void locking_vh_futex_sleep_start_handler(void *unused,
-		  struct task_struct *p)
-{
-}
-
-void locking_vh_futex_wake_traverse_plist_handler(void *unused, struct plist_head *chain,
+void locking_vh_futex_wake_traverse_plist(struct plist_head *chain,
 		  int *target_nr, union futex_key key, u32 bitset)
 {
 	struct futex_q *this, *next;
@@ -514,7 +519,7 @@ void locking_vh_futex_wake_traverse_plist_handler(void *unused, struct plist_hea
 	}
 }
 
-void locking_vh_futex_wake_this_handler(void *unused, int ret, int nr_wake, int target_nr,
+void locking_vh_futex_wake_this(int ret, int nr_wake, int target_nr,
 		  struct task_struct *p)
 {
 	if (p->lkinfo.ux_contrib && p->lkinfo.holder) {
@@ -534,8 +539,7 @@ void locking_vh_futex_wake_this_handler(void *unused, int ret, int nr_wake, int 
 		current->inherit_ux);
 }
 
-void locking_vh_futex_wake_up_q_finish_handler(void *unused, int nr_wake,
-		  int target_nr)
+void locking_vh_futex_wake_up_q_finish(int nr_wake, int target_nr)
 {
 	if (likely(!curr_is_inherit_futex()))
 		return;

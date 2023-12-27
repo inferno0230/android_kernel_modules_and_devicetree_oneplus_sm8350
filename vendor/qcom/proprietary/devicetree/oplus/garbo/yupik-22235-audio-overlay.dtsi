@@ -1,24 +1,24 @@
 &lpi_i2s1_sck_active {
 	config {
-		drive-strength = <4>;
+		drive-strength = <6>;
 	};
 };
 
 &lpi_i2s1_ws_active {
         config {
-                drive-strength = <4>;
+                drive-strength = <6>;
         };
 };
 
 &lpi_i2s1_sd0_active {
         config {
-                drive-strength = <4>;
+                drive-strength = <6>;
         };
 };
 
 &lpi_i2s1_sd1_active {
         config {
-                drive-strength = <4>;
+                drive-strength = <6>;
         };
 };
 
@@ -141,6 +141,7 @@
 		/*0:pri_l 1:pri_r 2:sec_l 3:sec_r*/
 		aw-tx-topo-id = <0x1001025C>;
 		aw-rx-topo-id = <0x1000ff01>;
+		aw-rx-topo-id-2 = <0x1000ff02>;
 		aw-tx-port-id = <0x1017>;
 		aw-rx-port-id = <0x1016>;
 		sound-channel = <0>;

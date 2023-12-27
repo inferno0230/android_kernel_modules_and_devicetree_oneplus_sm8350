@@ -2,6 +2,8 @@
 
 &pcie0 {
 	qcom,boot-option = <0x1>;
+	qcom,bdf-halt-dis;
+	qcom,wr-halt-size = <0x1e>;
 };
 
 &pcie0_bus2_dev2_fn0 {
@@ -12,30 +14,5 @@
 
 		#address-cells = <1>;
 		#size-cells = <1>;
-	};
-};
-
-&wlan {
-	mhi_events {
-		mhi_event@0 {
-			mhi,num-elements = <32>;
-			mhi,intmod = <0>;
-			mhi,msi = <1>;
-			mhi,priority = <0>;
-			mhi,brstmode = <2>;
-			mhi,data-type = <1>;
-		};
-
-		mhi_event@1 {
-			mhi,num-elements = <256>;
-			mhi,intmod = <0>;
-			mhi,msi = <2>;
-			mhi,priority = <1>;
-			mhi,brstmode = <2>;
-		};
-
-		mhi_event@2 {
-			status = "disabled";
-		};
 	};
 };

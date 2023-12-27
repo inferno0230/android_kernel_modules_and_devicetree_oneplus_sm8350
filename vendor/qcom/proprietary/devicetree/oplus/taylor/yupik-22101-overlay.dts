@@ -3,12 +3,12 @@
 
 #include "yupik-overlay.dtsi"
 #include "yupik-22101-overlay.dtsi"
-//#include "yupik-camera-sensor-22101.dtsi"
 #include "yupik-22101-audio-overlay.dtsi"
-#include "regulator/wl2868c.dtsi"
+//#include "regulator/wl2868c.dtsi"
 #include "yupik-camera-sensor-22101.dtsi"
 //#ifdef OPLUS_FEATURE_NFC_BRINGUP
 #include "nfc/taylor-nfc-sn100t.dtsi"
+#include "taylor-common.dtsi"
 //#endif OPLUS_FEATURE_NFC_BRINGUP
 / {
 	model = "Qualcomm Technologies, Inc. Yupik IDP";

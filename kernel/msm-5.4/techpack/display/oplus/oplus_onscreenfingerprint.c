@@ -45,6 +45,9 @@ extern u32 oplus_onscreenfp_vblank_count;
 extern ktime_t oplus_onscreenfp_pressed_time;
 extern unsigned int is_project(int project);
 
+#ifdef OPLUS_BUG_STABILITY
+bool oplus_enhance_mipi_strength = false;
+#endif
 static struct oplus_brightness_alpha brightness_alpha_lut[] = {
 	{0, 0xff},
 	{1, 0xee},
@@ -457,6 +460,12 @@ int dsi_panel_parse_oplus_config(struct dsi_panel *panel)
 	DSI_INFO("is_pxlw_iris5: %s",
 		 panel->oplus_priv.is_pxlw_iris5 ? "true" : "false");
 
+#ifdef OPLUS_BUG_STABILITY
+	oplus_enhance_mipi_strength = utils->read_bool(utils->data,
+					 "oplus,enhance_mipi_strength");
+	DSI_INFO("enhance_mipi_strength: %s",
+		 oplus_enhance_mipi_strength ? "true" : "false");
+#endif
 	panel->oplus_priv.is_osc_support = utils->read_bool(utils->data, "oplus,osc-support");
 	pr_info("[%s]osc mode support: %s", __func__, panel->oplus_priv.is_osc_support ? "Yes" : "Not");
 
@@ -557,7 +566,6 @@ int dsi_panel_parse_oplus_config(struct dsi_panel *panel)
 	panel->oplus_priv.seed_read_back_flag = utils->read_bool(utils->data,
 			"oplus,seed-read-back-flag");
 	DSI_INFO("oplus,seed-read-back-flag: %s", panel->oplus_priv.seed_read_back_flag ? "true" : "false");
-
 /*******************************************
 	fp_type usage:
 	bit(0):lcd capacitive fingerprint(aod/fod are not supported)

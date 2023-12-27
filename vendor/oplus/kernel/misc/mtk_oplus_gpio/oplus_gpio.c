@@ -27,6 +27,7 @@
 #include <linux/delay.h>
 #include <linux/workqueue.h>
 #include <linux/jiffies.h>
+#include <linux/version.h>
 
 #define GPIO_DEVICE_NAME "oplus-gpio"
 
@@ -43,7 +44,7 @@ do { \
 } while (0)
 
 
-#define MAX_GPIOS 3
+#define MAX_GPIOS 4
 #define OPLUS_GPIO_MAJOR 0
 
 #define OPLUS_GPIO_MAGIC 'E'
@@ -98,6 +99,7 @@ typedef enum {
 	GPIO_TYPE_ESIM,
 	GPIO_TYPE_ESIM_PRESENT,
 	GPIO_TYPE_DUAL_SIM_DET,
+	GPIO_TYPE_ESIM_EN,
 } gpio_enum_type;
 
 
@@ -134,6 +136,16 @@ struct oplus_gpio_info oplus_gpio_info_table[MAX_GPIOS] = {
 		.devt = 0,
 		.is_proc = 1,
 		.proc_init = dual_sim_det_init,
+	},
+	[GPIO_TYPE_ESIM_EN] =
+	{
+		.dts_desc = "oplus,oplus-esim-en",
+		.dev_node_desc = "esim-en",
+		.gpio = -1,
+		.gpio_mode = 1,
+		.gpio_status = 0,
+		.devt = 0,
+		.is_proc = 0,
 	}
 };
 static struct delayed_work recover_work;
@@ -237,20 +249,21 @@ static int dual_sim_det_proc_open(struct inode *inode, struct file *file)
 	return single_open(file, dual_sim_det_show, PDE_DATA(inode));
 }
 
-/*static const struct file_operations dual_sim_det_fops = {
-	.open = dual_sim_det_proc_open,
-	.read = seq_read,
-	.llseek = seq_lseek,
-	.release = single_release,
-};*/
-
-
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0)
 static const struct proc_ops dual_sim_det_fops = {
 	.proc_open = dual_sim_det_proc_open,
 	.proc_read = seq_read,
 	.proc_lseek = seq_lseek,
 	.proc_release = single_release,
 };
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(4, 19, 0)
+static const struct file_operations dual_sim_det_fops = {
+	.open = dual_sim_det_proc_open,
+	.read = seq_read,
+	.llseek = seq_lseek,
+	.release = single_release,
+};
+#endif
 
 static int dual_sim_det_init(struct platform_device *pdev, void *gpio_info_ptr)
 {
@@ -353,11 +366,12 @@ static long oplus_gpio_ioctl(struct file *filp, unsigned int cmd,
 	int gpio_status = -1;
 	int cmd_abs = cmd - OPLUS_GPIO_GET_OUTPUT_VALUE;
 
-	/* OPLUS_GPIO_MSG("enter\n"); */
+	OPLUS_GPIO_MSG("enter\n");
 
 	gpio_info = filp->private_data;
 
 	if (gpio_info == NULL) {
+		OPLUS_GPIO_MSG("return efault");
 		return -EFAULT;
 	}
 

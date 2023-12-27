@@ -7,9 +7,8 @@
 #include <linux/sched/task.h>
 #include <linux/uaccess.h>
 #include <../kernel/sched/sched.h>
-#include "frame_ioctl.h"
 #include "frame_group.h"
-
+#include "cluster_boost.h"
 extern unsigned long cpu_util_without(int cpu, struct task_struct *p);
 
 static DEFINE_RAW_SPINLOCK(preferred_cluster_id_lock);
@@ -21,20 +20,13 @@ static DEFINE_RAW_SPINLOCK(preferred_cluster_id_lock);
  */
 static atomic_t user_interested_tgid = ATOMIC_INIT(-1);
 
-int fbg_set_task_preferred_cluster(void __user *uarg)
+int __fbg_set_task_preferred_cluster(pid_t tid, int cluster_id)
 {
-	struct ofb_ctrl_cluster data;
-	struct task_struct *task = NULL;
+	struct task_struct * task = NULL;
 	unsigned long flags;
 
-	if (uarg == NULL)
-		return -EINVAL;
-
-	if (copy_from_user(&data, uarg, sizeof(data)))
-		return -EFAULT;
-
 	rcu_read_lock();
-	task = find_task_by_vpid(data.tid);
+	task = find_task_by_vpid(tid);
 	if (task)
 		get_task_struct(task);
 	rcu_read_unlock();
@@ -42,8 +34,8 @@ int fbg_set_task_preferred_cluster(void __user *uarg)
 	if (task) {
 		atomic_set(&user_interested_tgid, task->tgid);
 		raw_spin_lock_irqsave(&preferred_cluster_id_lock, flags);
-		if ((data.cluster_id >= 0) && (data.cluster_id < fbg_num_sched_clusters)) {
-			task->preferred_cluster_id = data.cluster_id;
+		if ((cluster_id >= 0) && (cluster_id < fbg_num_sched_clusters)) {
+			task->preferred_cluster_id = cluster_id;
 		} else {
 			task->preferred_cluster_id = -1;
 		}
@@ -53,6 +45,8 @@ int fbg_set_task_preferred_cluster(void __user *uarg)
 
 	return 0;
 }
+EXPORT_SYMBOL_GPL(__fbg_set_task_preferred_cluster);
+
 bool fbg_cluster_boost(struct task_struct *p, int *target_cpu)
 {
 	unsigned long flags;
@@ -77,7 +71,11 @@ bool fbg_cluster_boost(struct task_struct *p, int *target_cpu)
 
 	preferred_cluster = fb_cluster[preferred_cluster_id];
 	preferred_cpus = &preferred_cluster->cpus;
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 4, 0)
+        cpumask_and(&search_cpus, &p->cpus_allowed, cpu_active_mask);
+#else
 	cpumask_and(&search_cpus, &p->cpus_mask, cpu_active_mask);
+#endif
 	cpumask_and(&search_cpus, &search_cpus, preferred_cpus);
 
 	for_each_cpu(iter_cpu, &search_cpus) {

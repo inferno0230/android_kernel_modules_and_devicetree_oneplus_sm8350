@@ -69,10 +69,10 @@
 	};
 };
 
-&pm8008i_chip {
-	/delete-property/ pinctrl-names;
-	/delete-property/ pinctrl-0;
-};
+//&pm8008i_chip {
+//	/delete-property/ pinctrl-names;
+//	/delete-property/ pinctrl-0;
+//};
 
 &soc {
 	sde_dp: qcom,dp_display@ae90000 {
@@ -175,10 +175,10 @@
 					1151 1300
 					1301 1599
 					1600 1900>;
-			aboard-patterns = <13>;
+			aboard-patterns = <0 1 2>;
 
 			/*main board*/
-			match-projects = <22235>;
+			match-projects = <22235 22235 22236>;
 
 			/*rf type*/
 			//rf_match_support;
@@ -578,11 +578,16 @@
         prevention,edge_swipe_config = <240 800>;
 
         prevention,curved_screen_V4;
+        prevention,long_eliminate_point_type = <2 8640 6640 210 19296 300 1>;
         prevention,long_fingerhold_condition2 = <560 1600 0 0>;
         prevention,top_corner_config2 =<3 80 420 1200 0>;
         prevention,hor_long_top_corner_config =<240 1600 0 0>;
         prevention,top_middle_config =<8640 800 800 0>;
-        prevention,corner_eliminate_point_type =<0 960 1600 0>;
+        prevention,corner_eliminate_point_type =<0 960 1600 1>;
+        prevention,finger_hold_differ_size = <1 0 360 300>;
+        prevention,finger_hold_max_rx_exit_distance = <5 350 1700>;
+        prevention,max_rx_exit_distance = <1 5 90 350 1400>;
+        prevention,dynamic_finger_hold_exit_distance = <1 290 1700 390>;
 
         /* SW Support Feature Control */
         black_gesture_support;
@@ -605,6 +610,7 @@
         temperature_detect_shellback_support;
         snr_read_support;
         disable_suspend_irq_handler_support;
+        tp_data_record_support;
         /*
          *Virtual Key Config:
          *1:touchpanel,button-type: <virtualkey_type  supportted_button-map>
@@ -674,7 +680,7 @@
         project_id = <22235>;
         vid_len = <2>;
         touchpanel,tp-index = <0>;
-        touchpanel,tp_ic_type = <2>;
+        //touchpanel,tp_ic_type = <2>;
         panel_type = <7>;
         // type of tp_dev ,TP-SAMSUNG = 8;
         platform_support_project = <22235>;
@@ -703,11 +709,16 @@
         prevention,edge_swipe_config = <300 1000>;
 
         prevention,curved_screen_V4;
+        prevention,long_eliminate_point_type = <2 10800 8040 220 24120 300 1>;
         prevention,long_fingerhold_condition2 = <700 2000 0 0>;
         prevention,top_corner_config2 =<3 80 420 1500 0>;
         prevention,hor_long_top_corner_config =<300 2000 0 0>;
         prevention,top_middle_config =<10800 1000 1000 0>;
-        prevention,corner_eliminate_point_type =<0 1200 2000 0>;
+        prevention,corner_eliminate_point_type =<0 1200 2000 1>;
+        prevention,finger_hold_differ_size = <1 0 300 300>;
+        prevention,finger_hold_max_rx_exit_distance = <5 300 2000>;
+        prevention,max_rx_exit_distance = <1 5 150 300 2000>;
+        prevention,dynamic_finger_hold_exit_distance = <1 300 2000 450>;
 
         /* SW Support Feature Control */
         black_gesture_support;

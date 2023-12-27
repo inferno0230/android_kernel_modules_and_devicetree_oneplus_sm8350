@@ -1223,6 +1223,11 @@
 		track,wls_fast_chg_scheme = <0>;
 		track,wired_fast_chg_scheme = <1>;
 	};
+
+	oplus_battery_log: oplus,battery_log {
+		compatible = "oplus,battery_log";
+		oplus,battery_log_support;
+	};
 };
 //#endif /*OPLUS_FEATURE_CHG_BASIC*/
 
@@ -1489,9 +1494,12 @@
 	pinctrl-1 = <&tert_mi2s_sck_sleep &tert_mi2s_ws_sleep &tert_mi2s_sd0_sleep &tert_mi2s_sd1_sleep>;
 };
 
-&dai_mi2s2 {
-	qcom,msm-mi2s-tx-lines = <1>;
-	qcom,msm-mi2s-rx-lines = <2>;
+&dai_mi2s2_tx {
+	qcom,msm-mi2s-lines = <1>;
+};
+
+&dai_mi2s2_rx {
+	qcom,msm-mi2s-lines = <2>;
 };
 
 /* #ifdef OPLUS_ARCH_EXTENDS */
@@ -2255,7 +2263,7 @@
 		thermal-governor = "step_wise";
 		trips {
 			cg00_config: cg00-config {
-				temperature = <85000>;
+				temperature = <80000>;
 				hysteresis = <3000>;
 				type = "passive";
 			};
@@ -2277,7 +2285,7 @@
 		thermal-governor = "step_wise";
 		trips {
 			cg01_config: cg01-config {
-				temperature = <85000>;
+				temperature = <80000>;
 				hysteresis = <3000>;
 				type = "passive";
 			};
@@ -2299,7 +2307,7 @@
 		thermal-governor = "step_wise";
 		trips {
 			cg10_config: cg10-config {
-				temperature = <85000>;
+				temperature = <80000>;
 				hysteresis = <3000>;
 				type = "passive";
 			};
@@ -2321,7 +2329,7 @@
 		thermal-governor = "step_wise";
 		trips {
 			cg11_config: cg11-config {
-				temperature = <85000>;
+				temperature = <80000>;
 				hysteresis = <3000>;
 				type = "passive";
 			};
@@ -2343,7 +2351,7 @@
 		thermal-governor = "step_wise";
 		trips {
 			cg20_config: cg20-config {
-				temperature = <85000>;
+				temperature = <80000>;
 				hysteresis = <3000>;
 				type = "passive";
 			};
@@ -2365,7 +2373,7 @@
 		thermal-governor = "step_wise";
 		trips {
 			cg21_config: cg21-config {
-				temperature = <85000>;
+				temperature = <80000>;
 				hysteresis = <3000>;
 				type = "passive";
 			};
@@ -2387,7 +2395,7 @@
 		thermal-governor = "step_wise";
 		trips {
 			cg30_config: cg30-config {
-				temperature = <85000>;
+				temperature = <80000>;
 				hysteresis = <3000>;
 				type = "passive";
 			};
@@ -2409,7 +2417,7 @@
 		thermal-governor = "step_wise";
 		trips {
 			cg31_config: cg31-config {
-				temperature = <85000>;
+				temperature = <80000>;
 				hysteresis = <3000>;
 				type = "passive";
 			};

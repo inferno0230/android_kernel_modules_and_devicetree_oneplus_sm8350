@@ -1,6 +1,6 @@
 &mdss_mdp {
 	dsi_oplus22235_tm_ili7838a_1080_2412_dsc_cmd: qcom,mdss_dsi_oplus22235_tm_ili7838a_1080_2412_dsc_cmd {
-		qcom,mdss-dsi-panel-name = "tianma ili7838a dsc cmd mode panel";
+		qcom,mdss-dsi-panel-name = "tianma ili7838a dsc cmd mode panel 22235";
 		oplus,mdss-dsi-vendor-name = "ILI7838A";
 		oplus,mdss-dsi-manufacture = "TMAB525";
 		qcom,mdss-dsi-panel-type = "dsi_cmd_mode";
@@ -49,7 +49,7 @@
 
 		qcom,mdss-dsi-display-timings {
 			timing@0{
-				qcom,mdss-dsi-panel-clockrate = <970000000>;
+				qcom,mdss-dsi-panel-clockrate = <978000000>;
 				qcom,mdss-mdp-transfer-time-us = <7000>;
 				qcom,mdss-dsc-version = <0x12>;
 				qcom,mdss-dsi-panel-width = <1080>;
@@ -284,7 +284,7 @@
 				qcom,mdss-dsc-block-prediction-enable;
 			};
 			timing@1{
-				qcom,mdss-dsi-panel-clockrate = <970000000>;
+				qcom,mdss-dsi-panel-clockrate = <978000000>;
 				qcom,mdss-mdp-transfer-time-us = <9000>;
 				qcom,mdss-dsc-version = <0x12>;
 				qcom,mdss-dsi-panel-width = <1080>;
@@ -519,7 +519,7 @@
 				qcom,mdss-dsc-block-prediction-enable;
 			};
 			timing@2{
-				qcom,mdss-dsi-panel-clockrate = <970000000>;
+				qcom,mdss-dsi-panel-clockrate = <978000000>;
 				qcom,mdss-mdp-transfer-time-us = <12000>;
 				qcom,mdss-dsc-version = <0x12>;
 				qcom,mdss-dsi-panel-width = <1080>;

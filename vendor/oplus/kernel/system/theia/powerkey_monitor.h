@@ -43,6 +43,7 @@
 #include <linux/kthread.h>
 #include <soc/oplus/system/oplus_bscheck.h>
 #include <soc/oplus/system/oplus_brightscreen_check.h>
+#include "../include/theia_send_event.h"
 
 #include <asm/uaccess.h>
 #include <linux/proc_fs.h>

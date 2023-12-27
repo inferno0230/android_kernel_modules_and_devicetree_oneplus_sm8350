@@ -166,11 +166,10 @@ static int fp_panel_event_notifier_register(struct gf_dev *gf_dev)
 
 		if (IS_ERR(cookie)) {
 			status = -1;
-			pr_err("%s panel_event_notifier_register err = %d!\n",
-			       __func__, PTR_ERR(cookie));
+            pr_err("%s panel_event_notifier_register err = %ld!\n", __func__, PTR_ERR(cookie));
 		}
 		gf_dev->notifier_cookie = cookie;
-		pr_err("%s notifier_cookie = %d!\n", __func__, cookie);
+        pr_err("%s notifier_cookie = %p!\n", __func__, cookie);
 	}
 
 	if (0 == status) {

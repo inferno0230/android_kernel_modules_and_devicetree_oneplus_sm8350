@@ -58,6 +58,10 @@ source "drivers/soc/oplus/system/qcom_pmicwd/Kconfig"
 source "drivers/soc/oplus/system/dump_reason/Kconfig"
 #endif /* OPLUS_FEATURE_DUMP_REASON */
 
+#ifdef OPLUS_FEATURE_FULLDUMP_BACK
+source "drivers/soc/oplus/system/oplus_ordump/Kconfig"
+#endif /* OPLUS_FEATURE_FULLDUMP_BACK */
+
 #ifdef OPLUS_FEATURE_MM_FEEDBACK
 source "drivers/soc/oplus/system/oplus_mm_fb/Kconfig"
 #endif /* OPLUS_FEATURE_MM_FEEDBACK */

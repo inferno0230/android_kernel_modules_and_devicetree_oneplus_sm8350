@@ -12,9 +12,11 @@
             compatible = "oplus,kookong_ir_core";
             status = "okay";
 
-            vdd-type = <1>; /*0: internal LDO , 1: external LOD*/
-            vdd-min-vol = <3060>;
-            vdd-max-vol = <3060>;
+            vdd-type = <0>; /*0: internal LDO , 1: external LOD*/
+            vdd-supply = <&pm8008i_l5>;
+            vdd-min-vol = <3064000>;
+            vdd-max-vol = <3064000>;
+            vdd-change-enable = <1>; // when value = 1, set different vdd begain power on
         };
         /*enum sensor_id { OPLUS_ACCEL,OPLUS_GYRO,OPLUS_MAG,OPLUS_LIGHT,OPLUS_PROXIMITY,OPLUS_SAR,OPLUS_CT,OPLUS_BAROMETER,SENSORS_NUM};*/
         oplus_sensor: oplus_sensor {
@@ -23,13 +25,13 @@
                 /*enum {LSM6DSM = 0x01, BMI160 = 0x02, LSM6DS3 = 0x04, BMI260 = 0x08};*/
                 gsensor@0 {
                         sensor-name = <0x40>;//ICM4X607
-                        sensor-direction = <5>;
+                        sensor-direction = <3>;
                         sensor-index = <0>;//source num
                         sensor-type = <0>;//OPLUS_ACCEL
                 };
                 gsensor@1 {
-                        sensor-name = <0x10>;//LSM6DSO
-                        sensor-direction = <5>;
+                        sensor-name = <0x84>;//ICM456XX
+                        sensor-direction = <3>;
                         sensor-index = <1>;//source num
                         sensor-type = <0>;//OPLUS_ACCEL
                 };
@@ -40,7 +42,15 @@
                         sensor-index = <0>;
                         sensor-type = <2>;//OPLUS_MAG
                         parameter-number= <18>;
-                        soft-mag-parameter = <10175 0 460 0 206 0 423 0 9199 0 46 1 211 1 126 0 10313 0>;//e00 sign e01 sign...
+                        soft-mag-parameter = <9654 0 671 0 47 0 631 0 9143 0 31 1 140 0 173 1 10166 0>;//e00 sign e01 sign...
+                };
+                msensor@1 {
+                        sensor-name = <0x02>;//MMC5603
+                        sensor-direction = <1>;
+                        sensor-index = <1>;
+                        sensor-type = <2>;//OPLUS_MAG
+                        parameter-number= <18>;
+                        soft-mag-parameter = <9968 0 688 0 384 0 710 0 9923 0 283 0 327 1 69 0 11254 0>;//e00 sign e01 sign...
                 };
                 /*enum {STK3A5X=0x01,TCS3701=0x02,TCS3408=0x04,STK326X};*/
                 /*enum {NORMAL=0x01,UNDER_LCD=0x02,VIRTUAL_UNDER_LCD=0x03}*/
@@ -106,8 +116,8 @@
                         cal_offset_margin = <80>;
                         /*sensor-reg start*/
                         parameter-number = <4>;
-                        sensor-reg = <0xB9 0x1C
-                                      0xBC 0xFB>;
+                        sensor-reg = <0xB9 0x21
+                                      0xBC 0xFB>; // 70mA- 33*2+4 = 70, 33->0X21
                         /*sensor-reg end*/
                 };
                 /*virtual sensor

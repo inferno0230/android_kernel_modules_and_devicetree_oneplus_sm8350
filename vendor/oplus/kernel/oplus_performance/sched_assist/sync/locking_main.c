@@ -20,8 +20,14 @@ static int __init locking_opt_init(void)
 	g_opt_enable |= LK_MUTEX_ENABLE;
 	g_opt_enable |= LK_RWSEM_ENABLE;
 	g_opt_enable |= LK_FUTEX_ENABLE;
+#ifdef CONFIG_OPLUS_LOCKING_OSQ
+	g_opt_enable |= LK_OSQ_ENABLE;
+#endif
 
 	lk_sysfs_init();
+#ifdef CONFIG_OPLUS_LOCKING_MONITOR
+	kern_lstat_init();
+#endif
 	return ret;
 }
 
@@ -29,6 +35,9 @@ static void __exit locking_opt_exit(void)
 {
 	g_opt_enable = 0;
 	lk_sysfs_exit();
+#ifdef CONFIG_OPLUS_LOCKING_MONITOR
+	kern_lstat_exit();
+#endif
 }
 
 module_init(locking_opt_init);
